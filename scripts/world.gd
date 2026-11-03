@@ -1,6 +1,7 @@
 extends Node3D
 ## Hand-built procedural scenery, centimetre world units. No runtime asset downloads.
 const Data = preload("res://scripts/case_data.gd")
+const LEAF_TEXTURE = preload("res://assets/textures/palm_leaf_albedo.png")
 var materials: Dictionary = {}
 var hotspots: Dictionary = {}
 var scenery: Node3D
@@ -205,6 +206,20 @@ func seat(p: Vector3, color: Color = TEAL) -> void:
  for x in [-20,0,20]: box(p+Vector3(x,60,19.8),Vector3(0.5,43,0.5),GOLD,false)
  for x in [-23,23]: cyl(p+Vector3(x,5,-20),2,10,GOLD)
 
+func leaf_material(dark: bool) -> StandardMaterial3D:
+ var key := "palm_leaf_dark" if dark else "palm_leaf_light"
+ if materials.has(key): return materials[key]
+ var m := StandardMaterial3D.new()
+ m.albedo_texture = LEAF_TEXTURE
+ m.albedo_color = Color("b7cfb5") if dark else Color.WHITE
+ m.roughness = 0.65
+ # Project across the flattened leaf surface without stretching at sphere poles.
+ m.uv1_triplanar = true
+ m.uv1_scale = Vector3(0.65,0.65,0.65)
+ m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+ materials[key] = m
+ return m
+
 func plant(p: Vector3, height: float = 100, spread: float = 35) -> void:
  cyl(p+Vector3(0,14,0),17,28,Color("a77758"),true,self,22)
  cyl(p+Vector3(0,28,0),21,2,Color("292e25"),false)
@@ -220,6 +235,7 @@ func plant(p: Vector3, height: float = 100, spread: float = 35) -> void:
   for k in range(1,5):
    var a := tip*float(k)/5
    var leaf := ball(a,Vector3(10,2,spread*0.65),Color("386b4e") if j%2 else Color("588861"),crown)
+   leaf.material_override = leaf_material(j%2 == 1)
    leaf.rotation.y = -angle+0.65
    leaf.rotation.z = -0.3
 
