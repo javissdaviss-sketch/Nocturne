@@ -213,31 +213,70 @@ func leaf_material(dark: bool) -> StandardMaterial3D:
  m.albedo_texture = LEAF_TEXTURE
  m.albedo_color = Color("b7cfb5") if dark else Color.WHITE
  m.roughness = 0.65
- # Project across the flattened leaf surface without stretching at sphere poles.
- m.uv1_triplanar = true
- m.uv1_scale = Vector3(0.65,0.65,0.65)
+ # Explicit leaf UVs keep the photographed vertical veins running base to tip.
+ m.cull_mode = BaseMaterial3D.CULL_DISABLED
  m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
  materials[key] = m
  return m
 
+func palm_blade(surface: SurfaceTool, base: Vector3, tip: Vector3, width: float, stripe: float) -> void:
+ # A folded, tapering ribbon: U crosses the blade; V follows its entire length.
+ # Each leaflet samples a narrow band of the photo, avoiding compressed veins.
+ var axis := (tip-base).normalized()
+ var across := axis.cross(Vector3.UP).normalized()
+ var sections := 7
+ for segment in range(sections):
+  var points: Array[Vector3] = []
+  var uvs: Array[Vector2] = []
+  for row in range(2):
+   var along := float(segment+row)/sections
+   var center := base.lerp(tip,along)+Vector3.UP*sin(along*PI)*width*0.3
+   var half_width := width*pow(sin(along*PI),0.7)*0.5
+   for edge in [-1,0,1]:
+    points.append(center+across*half_width*edge-Vector3.UP*abs(edge)*half_width*0.18)
+    uvs.append(Vector2(stripe+float(edge)*0.055,along))
+  for index in [0,3,1,1,3,4,1,4,2,2,4,5]:
+   surface.set_uv(uvs[index])
+   surface.add_vertex(points[index])
+
+func palm_spine(along: float, length: float, lift: float) -> Vector3:
+ return Vector3(0,lift*sin(along*PI*0.8)-length*0.30*along*along,length*along)
+
 func plant(p: Vector3, height: float = 100, spread: float = 35) -> void:
  cyl(p+Vector3(0,14,0),17,28,Color("a77758"),true,self,22)
  cyl(p+Vector3(0,28,0),21,2,Color("292e25"),false)
- line(p+Vector3(0,28,0),p+Vector3(0,height,0),1.7,Color("66724a"))
+ # Slender, ringed palm cane below a crown of arching feather fronds.
+ var crown_height := height*0.83
+ cyl(p+Vector3(0,(28+crown_height)*0.5,0),2.8,crown_height-28,Color("89764d"),false,self,1.8)
+ for ring in range(35,int(crown_height),8):
+  cyl(p+Vector3(0,ring,0),2.85,0.65,Color("635a3b"),false)
  var crown := Node3D.new()
  add_child(crown)
- crown.position = p+Vector3(0,height*0.83,0)
+ crown.position = p+Vector3(0,crown_height,0)
  palms.append(crown)
  for j in range(9):
-  var angle := j*TAU/9+rng.randf_range(-0.2,0.2)
-  var tip := Vector3(cos(angle)*spread, rng.randf_range(-24,25),sin(angle)*spread)
-  line(Vector3.ZERO,tip,0.8,Color("578665"),crown)
-  for k in range(1,5):
-   var a := tip*float(k)/5
-   var leaf := ball(a,Vector3(10,2,spread*0.65),Color("386b4e") if j%2 else Color("588861"),crown)
-   leaf.material_override = leaf_material(j%2 == 1)
-   leaf.rotation.y = -angle+0.65
-   leaf.rotation.z = -0.3
+  var frond := Node3D.new()
+  crown.add_child(frond)
+  frond.rotation.y = j*TAU/9+rng.randf_range(-0.15,0.15)
+  var length := spread*rng.randf_range(0.88,1.10)
+  var lift := length*(0.85 if j%3 == 0 else 0.48)
+  var surface := SurfaceTool.new()
+  surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+  for segment in range(8):
+   line(palm_spine(float(segment)/8,length,lift),palm_spine(float(segment+1)/8,length,lift),0.35,Color("748c43"),frond)
+  for pair in range(1,11):
+   var along := float(pair)/12
+   var base := palm_spine(along,length,lift)
+   var blade_length := length*0.45*pow(1.0-along,0.55)
+   for side in [-1,1]:
+    var tip := base+Vector3(side*blade_length,-blade_length*0.22,blade_length*0.45)
+    palm_blade(surface,base,tip,blade_length*0.16,0.15+float(pair%5)*0.16)
+  palm_blade(surface,palm_spine(0.8,length,lift),palm_spine(1.06,length,lift),length*0.06,0.5)
+  surface.generate_normals()
+  var leaves := MeshInstance3D.new()
+  leaves.mesh = surface.commit()
+  leaves.material_override = leaf_material(j%2 == 1)
+  frond.add_child(leaves)
 
 func residential() -> void:
  for z in [140,470]:
