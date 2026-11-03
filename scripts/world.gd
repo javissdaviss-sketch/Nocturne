@@ -2,6 +2,7 @@ extends Node3D
 ## Hand-built procedural scenery, centimetre world units. No runtime asset downloads.
 const Data = preload("res://scripts/case_data.gd")
 const LEAF_TEXTURE = preload("res://assets/textures/palm_leaf_albedo.png")
+const TABLE_TEXTURE = preload("res://assets/textures/table_mahogany_albedo.png")
 var materials: Dictionary = {}
 var hotspots: Dictionary = {}
 var scenery: Node3D
@@ -192,9 +193,40 @@ func carriage(index: int) -> void:
  if index == 0: sign_text("05  ←   RESIDENT ACCESS ONLY",Vector3(0,160,2),0.25,GOLD)
  if index == 2: sign_text("09  →   RESIDENT ACCESS ONLY",Vector3(0,160,z+797),0.25,GOLD)
 
+func table_material() -> StandardMaterial3D:
+ if materials.has("table_mahogany"): return materials["table_mahogany"]
+ var material := StandardMaterial3D.new()
+ material.albedo_texture = TABLE_TEXTURE
+ material.roughness = 0.48
+ material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+ materials["table_mahogany"] = material
+ return material
+
+func table_slab(p: Vector3, size: Vector3) -> void:
+ var slab := box(p,size,Color.WHITE)
+ var arrays := slab.mesh.surface_get_arrays(0)
+ var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+ var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+ var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+ # Use centimetres for consistent grain scale on every table. The photograph's
+ # vertical grain follows the longest tabletop axis; edges keep the same scale.
+ for i in range(vertices.size()):
+  var point := vertices[i]+size*0.5
+  if abs(normals[i].y) > 0.5:
+   uvs[i] = Vector2(point.z,point.x)/80.0 if size.x >= size.z else Vector2(point.x,point.z)/80.0
+  elif abs(normals[i].x) > 0.5:
+   uvs[i] = Vector2(point.y,point.z)/80.0
+  else:
+   uvs[i] = Vector2(point.y,point.x)/80.0
+ arrays[Mesh.ARRAY_TEX_UV] = uvs
+ var mesh := ArrayMesh.new()
+ mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
+ slab.mesh = mesh
+ slab.material_override = table_material()
+
 func table(p: Vector3, width: float = 72, depth: float = 72) -> void:
- box(p+Vector3(0,74,0),Vector3(width,5,depth),Color("9b7453"))
- box(p+Vector3(0,77,0),Vector3(width-3,0.8,depth-3),Color("59463a"),true)
+ table_slab(p+Vector3(0,74,0),Vector3(width,5,depth))
+ table_slab(p+Vector3(0,77,0),Vector3(width-3,0.8,depth-3))
  for x in [-1,1]:
   for z in [-1,1]: cyl(p+Vector3(x*(width/2-8),36,z*(depth/2-8)),2,72,GOLD,true,self,-1,0.5)
 
