@@ -37,3 +37,9 @@ A fixed lounge view on Mesa llvmpipe software rendering measured median frame du
 Graphical GL Compatibility checks cover the lounge, residences, garden, close dining setting, and mounted twelve-carriage directory. The new runners, wood and upholstery shaders compile without errors. Travel/service/botanical props are batched into 39 MultiMeshes and the signage fixture geometry into three; decorative props add no collision geometry or interactions. The existing six clues, access duct, covered crime scene, and settings retain their behavior. Case/collision/save, jump, atmosphere persistence, graphical mouse, and complete investigation checks pass.
 
 Palm midrib segments are merged into one mesh per frond while keeping the crown sway. In the same lounge camera, a render snapshot decreased from approximately 8,575 draw calls before this merge to 4,477 after it, including the new dressing. These counts describe this camera under Mesa software rendering; real GPU frame rate remains unmeasured.
+
+## Additional carriage props
+
+Residential, hospitality, and garden prop groups add 452 primitive components in 61 material/shape batches: luggage racks and carry-ons, hat/umbrella stand, chess and reading lamp, radio, a fully dressed two-shelf tea trolley, service utensils, watering can, nursery tray, propagation rack, hose reel, and a slatted garden crate. Shared mesh transforms now apply local dimensions before rotation, keeping angled rods, wheels, handles and book bindings correctly proportioned.
+
+Graphical GL Compatibility previews of chess/lamp, residential furnishings, tea trolley, and garden equipment pass without script or shader errors. Case, jump, atmosphere persistence, graphical mouse, and full investigation tests pass. New physics checks verify the crate's slats are solid, their actual gaps are open to the fly, and the rim supports perching. The clue locations and central aisle are retained.

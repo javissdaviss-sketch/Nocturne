@@ -15,6 +15,9 @@ func build() -> void:
  residential_details()
  dining_details()
  garden_details()
+ finish_batches()
+
+func finish_batches() -> void:
  for key in batches:
   var data: Dictionary = batches[key]
   var instances := MultiMesh.new()
@@ -78,7 +81,7 @@ func instance(shape: String, p: Vector3, size: Vector3, color: Color, metal: boo
  var material := material_id(color,metal)
  var key := shape+material
  if not batches.has(key): batches[key] = {"shape":shape,"material":material,"transforms":[]}
- var basis := Basis.from_euler(rotation3).scaled(size)
+ var basis := Basis.from_euler(rotation3)*Basis.from_scale(size)
  batches[key].transforms.append(Transform3D(basis,p))
  detail_count += 1
 

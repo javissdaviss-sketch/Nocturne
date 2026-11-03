@@ -50,7 +50,7 @@ Use **Godot 4.6.3** (4.6 series recommended), import `project.godot`, then press
 godot --path .
 ```
 
-The carriages carry a shared Deco identity: mounted twelve-carriage directories and service plaques, patterned runners, walnut flooring, woven seating, travel luggage and reading shelves, laid dining settings, and botanical work supplies. The six physical clues retain their original positions and inspection flow.
+The carriages carry a shared Deco identity: mounted twelve-carriage directories and service plaques, patterned runners, walnut flooring, woven seating, travel luggage and reading shelves, laid dining settings, and botanical work supplies. Additional props include overhead luggage racks, a hat-and-umbrella stand, a tabletop radio, a travel chess set and reading lamp, a wheeled tea trolley, and a garden watering can, propagation rack, seedling tray, hose reel, and slatted crate. The crate has real slat gaps and a perchable rim. The six physical clues retain their original positions and inspection flow.
 
 The passing city uses layered parallax, housed neon signs with soft shader halos, rain on the sealed windows, exterior precipitation, and sparse lamplit dust. These effects run on the existing GL Compatibility renderer.
 

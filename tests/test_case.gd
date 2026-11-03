@@ -78,9 +78,17 @@ func run() -> void:
  fly.position = Vector3(169,110,1200)
  collision = fly.move_and_collide(Vector3(20,0,0))
  check(collision!=null and fly.position.x<175,"Windows prevent escaping the train")
+ # New prop: real gaps between garden-crate slats admit the 6 mm fly.
+ query = PhysicsRayQueryParameters3D.create(Vector3(-154,10,2421),Vector3(-144,10,2421),1)
+ check(space.intersect_ray(query).is_empty(),"Garden crate has real gaps between slats")
+ query = PhysicsRayQueryParameters3D.create(Vector3(-154,6,2421),Vector3(-144,6,2421),1)
+ check(not space.intersect_ray(query).is_empty(),"Garden crate wooden slats are solid")
+ fly.position = Vector3(-148.5,35,2421)
+ collision = fly.move_and_collide(Vector3(0,-20,0))
+ check(collision!=null and fly.position.y>24.8,"Fly can perch on the garden crate rim")
  world.queue_free()
  fly.queue_free()
  await process_frame
  for path in ["user://test-case.json","user://test-bad.json"]: DirAccess.remove_absolute(path)
- if failures.is_empty(): print("PASS: case logic, corrupted saves, all physical clues, connected carriages, fly-sized duct, tabletop landing, window collision")
+ if failures.is_empty(): print("PASS: case logic, corrupted saves, all physical clues, connected carriages, fly-sized duct, tabletop landing, window collision, garden crate gaps and perching")
  quit(0 if failures.is_empty() else 1)

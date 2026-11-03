@@ -6,6 +6,9 @@ const TABLE_TEXTURE = preload("res://assets/textures/table_mahogany_albedo.png")
 const CABIN_FINISH = preload("res://shaders/cabin_surfaces.gdshader")
 const RUNNER_FINISH = preload("res://shaders/nocturne_runner.gdshader")
 const CarriageIdentity = preload("res://scripts/carriage_identity.gd")
+const ResidentialProps = preload("res://scripts/residential_props.gd")
+const HospitalityProps = preload("res://scripts/hospitality_props.gd")
+const GardenProps = preload("res://scripts/garden_props.gd")
 const LivedInDetails = preload("res://scripts/lived_in_details.gd")
 const Exterior = preload("res://scripts/exterior.gd")
 const RainWindows = preload("res://scripts/rain_windows.gd")
@@ -142,6 +145,10 @@ func _ready() -> void:
  var details := LivedInDetails.new()
  add_child(details)
  details.build()
+ for prop_script in [ResidentialProps,HospitalityProps,GardenProps]:
+  var props: Node3D = prop_script.new()
+  add_child(props)
+  props.build()
  make_hotspots()
 
 func make_environment() -> void:
