@@ -39,6 +39,8 @@ jobs:
         run: godot --headless --path . --editor --import --quit
       - name: Evidence, collision, and save tests
         run: timeout 60s godot --headless --path . --script res://tests/test_case.gd
+      - name: Jump and double-tap takeoff regression
+        run: timeout 60s godot --headless --path . --script res://tests/test_jump.gd
       - name: Mouse look through HUD regression
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'

@@ -19,6 +19,7 @@ var hud: Control
 var marker_layer: Control
 var room_label: Label
 var evidence_label: Label
+var controls_label: Label
 var prompt: Label
 var toast_label: Label
 var mode := "title"
@@ -148,6 +149,7 @@ func overlay(shade: float = 0.7) -> void:
  rect(modal,Vector2.ZERO,Vector2(1440,900),Color(0.018,0.045,0.039,shade))
  Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
  fly.active = false
+ fly.space_tap_remaining = 0.0
  marker_layer.visible = false
 
 func setup_hud() -> void:
@@ -164,7 +166,7 @@ func setup_hud() -> void:
  label(hud,"J  Notebook     Tab  Deduction     Esc  Pause",Vector2(947,57),Vector2(465,25),14,MUTED)
  rect(hud,Vector2(0,823),Vector2(1440,77),Color(0.025,0.07,0.065,0.94))
  rect(hud,Vector2(35,822),Vector2(1370,1),Color("647263"))
- label(hud,"WASD  Fly    SPACE / CTRL  Rise / descend    SHIFT  Precision    E  Inspect / land",Vector2(36,842),Vector2(1100,30),14,PAPER)
+ controls_label = label(hud,"WASD  Fly    SPACE / CTRL  Rise / descend    SHIFT  Precision    E  Inspect    L  Land",Vector2(36,842),Vector2(1100,30),14,PAPER)
  label(hud,"SCROLL  Camera",Vector2(1220,842),Vector2(200,30),14,MUTED)
  rect(hud,Vector2(395,732),Vector2(650,75),Color(0.025,0.07,0.065,0.9))
  prompt = label(hud,"",Vector2(405,735),Vector2(630,68),19,GOLD)
@@ -221,6 +223,7 @@ func start_game(fresh: bool) -> void:
   if state.dispatch_open: world.unlock_dispatch()
  apply_settings()
  fly.position = Vector3(state.saved_position[0],state.saved_position[1],state.saved_position[2])
+ fly.reset_movement()
  fly.safe_position = fly.position
  fly.yaw = PI
  fly.pitch = -0.12
@@ -269,6 +272,7 @@ func _process(delta: float) -> void:
   var room := clampi(int(fly.position.z/840.0),0,2)
   room_label.text = ["06   /   THE RESIDENCES","07   /   THE NIGHT LOUNGE","08   /   THE WINTER GARDEN"][room]
   evidence_label.text = "THE VALE CASE   /   %d OF 6 CLUES" % state.evidence_count()
+  controls_label.text = "WASD  Walk    SPACE  Jump · double-tap Take off    E  Inspect    L  Land / take off" if fly.landed or fly.jumping else "WASD  Fly    SPACE / CTRL  Rise / descend    SHIFT  Precision    E  Inspect    L  Land"
   nearest = ""
   var best := INF
   for id in world.hotspots:
@@ -292,8 +296,10 @@ func _process(delta: float) -> void:
     best = d
     nearest = id
   if nearest != "": prompt.text = "E   " + ("Listen · " if Data.TALKS.has(nearest) else "Inspect · ") + Data.record(nearest).title
-  else: prompt.text = "E   Take off" if fly.landed else "E   Land on a nearby surface"
- if is_instance_valid(wings): wings.volume_db = linear_to_db(max(0.0001,float(options.wings)*(0.25 if fly.landed or mode!="play" else 1.0)))
+  elif fly.landed: prompt.text = "SPACE   Jump   ·   Double-tap SPACE   Take off"
+  elif fly.jumping: prompt.text = "SPACE again   Take off" if fly.space_tap_remaining > 0.0 else "Landing…"
+  else: prompt.text = "E   Land on a nearby surface"
+ if is_instance_valid(wings): wings.volume_db = linear_to_db(max(0.0001,float(options.wings)*(0.25 if fly.landed or fly.jumping or mode!="play" else 1.0)))
  if capture_mode: capture_sequence()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -310,7 +316,7 @@ func _unhandled_input(event: InputEvent) -> void:
   match event.keycode:
    KEY_E:
     if nearest!="": show_inspection(nearest)
-    elif not fly.try_land(): toast("Move within 18 cm of a horizontal surface to land. Space takes off.")
+    elif not fly.try_land(): toast("Move within 18 cm of a horizontal surface to land. Tap Space to jump; double-tap to take off.")
    KEY_L:
     if not fly.try_land(): toast("Move within 18 cm of a horizontal surface to land.")
    KEY_J: show_notebook()
@@ -554,7 +560,7 @@ func show_pause() -> void:
   fly.position = Vector3(-75,88,1225)
   fly.safe_position = fly.position
   fly.velocity = Vector3.ZERO
-  fly.landed = false
+  fly.reset_movement()
   resume_game()
  )
  button(p,"Save & title",Vector2(30,473),Vector2(450,50),func(): save_game(); show_title())
@@ -565,7 +571,7 @@ func show_controls() -> void:
  var p := panel(modal,Vector2(230,150),Vector2(980,620))
  label(p,"A HOUSEFLY’S FIELD GUIDE",Vector2(35,30),Vector2(900,40),14,GOLD)
  label(p,"Think small. Look closely.",Vector2(35,95),Vector2(900,65),38,PAPER,true)
- label(p,"WASD: move relative to the camera’s horizontal direction\nMouse: look around · Scroll: adjust camera distance\nSpace / Ctrl: rise / descend · Shift: slow precision movement\nE: inspect / listen · L: land / take off · Space: take off\nJ: notebook · Tab: deduction · Esc: pause\n\nFollow diamond markers; move close until the E prompt appears.\nInspection: hold right mouse and drag to orbit, scroll to zoom.\nThe fly is 6 mm long. You can land on tables, shelves, and floors.\nYou cannot carry human-sized objects or crawl on ceilings.\n\nProgress saves automatically. Pause offers a safe-perch recovery.",Vector2(35,190),Vector2(910,330),19,PAPER)
+ label(p,"WASD: move relative to the camera’s horizontal direction\nMouse: look around · Scroll: adjust camera distance\nSpace / Ctrl: rise / descend · Shift: slow precision movement\nE: inspect / listen · L: land / take off\nLanded: tap Space to jump; double-tap Space to take off\nJ: notebook · Tab: deduction · Esc: pause\n\nFollow diamond markers; move close until the E prompt appears.\nInspection: hold right mouse and drag to orbit, scroll to zoom.\nThe fly is 6 mm long. You can land on tables, shelves, and floors.\nYou cannot carry human-sized objects or crawl on ceilings.\n\nProgress saves automatically. Pause offers a safe-perch recovery.",Vector2(35,190),Vector2(910,330),19,PAPER)
  button(p,"Return to flight",Vector2(35,538),Vector2(910,48),resume_game)
 
 func show_settings() -> void:

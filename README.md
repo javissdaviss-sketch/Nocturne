@@ -25,7 +25,7 @@ A Linux x64 build is also included as a development convenience: `chmod +x Noctu
 | Scroll wheel | Adjust third-person camera distance |
 | E | Inspect or listen; land if no object is nearby |
 | L | Land / take off, including beside evidence |
-| Space | Take off from a surface |
+| Space (landed) | Tap to jump; double-tap within 0.3 seconds to take off |
 | J | Notebook, field photographs, and carriage guide |
 | Tab | Final deduction |
 | Esc | Pause or close the current screen |
@@ -60,6 +60,7 @@ The mouse-look regression requires a graphical display (or Xvfb), because headle
 ```sh
 godot --headless --path . --editor --import --quit
 godot --headless --path . --script res://tests/test_case.gd
+godot --headless --path . --script res://tests/test_jump.gd
 godot --headless --path . -- --smoke
 ```
 
