@@ -1,0 +1,7 @@
+.godot/
+*.tmp
+.DS_Store
+
+.release/
+__pycache__/
+launcher/*.exe

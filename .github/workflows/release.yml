@@ -1,0 +1,145 @@
+name: Build, test, deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nocturne-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  GODOT_VERSION: '4.6.3'
+  GO_VERSION: '1.25.3'
+
+jobs:
+  verify:
+    name: Game and updater regression tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+          include-templates: false
+      - name: Install graphical test dependencies
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0
+      - name: Import game
+        run: godot --headless --path . --editor --import --quit
+      - name: Evidence, collision, and save tests
+        run: timeout 60s godot --headless --path . --script res://tests/test_case.gd
+      - name: Mouse look through HUD regression
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          LP_NUM_THREADS: '4'
+        run: timeout 180s xvfb-run -a godot --path . --audio-driver Dummy --script res://tests/test_mouse.gd
+      - name: Complete investigation integration
+        run: timeout 60s godot --headless --path . -- --smoke
+      - name: Updater download, rollback, corruption, and archive tests
+        working-directory: launcher
+        run: go test -race -v ./...
+      - name: Release packaging and publication checks
+        run: python3 -m unittest discover -s pipeline -p 'test_*.py' -v
+
+  build:
+    name: Build release artifacts
+    needs: verify
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+          include-templates: true
+      - id: version
+        name: Assign an increasing release version
+        run: echo "value=0.1.$((GITHUB_RUN_NUMBER + 1))" >> "$GITHUB_OUTPUT"
+      - name: Export game, launcher, offline setup, source, and checksums
+        run: python3 pipeline/build.py --out .release --version '${{ steps.version.outputs.value }}' --repository '${{ github.repository }}'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nocturne-release
+          path: |
+            .release/Nocturne-Windows.zip
+            .release/Nocturne-Setup-Windows.zip
+            .release/Nocturne-Source.zip
+            .release/update.json
+            .release/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  windows:
+    name: Windows executable and desktop installation checks
+    needs: build
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+      - name: Native Windows updater tests
+        working-directory: launcher
+        run: go test -v ./...
+      - uses: actions/download-artifact@v4
+        with:
+          name: nocturne-release
+          path: .release
+      - name: Test the exact packaged game and installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Expand-Archive .release/Nocturne-Windows.zip "$env:RUNNER_TEMP/game"
+          $game = Start-Process "$env:RUNNER_TEMP/game/Nocturne/Nocturne.exe" -ArgumentList '--headless','--','--smoke' -Wait -PassThru
+          if ($game.ExitCode -ne 0) { throw "Packaged game failed: $($game.ExitCode)" }
+          Expand-Archive .release/Nocturne-Setup-Windows.zip "$env:RUNNER_TEMP/setup"
+          $env:LOCALAPPDATA = [System.IO.Path]::GetFullPath((Join-Path $env:RUNNER_TEMP 'install-data'))
+          New-Item -ItemType Directory -Force $env:LOCALAPPDATA | Out-Null
+          $install = Start-Process "$env:RUNNER_TEMP/setup/Nocturne-Setup/Nocturne-Launcher.exe" -ArgumentList '--install','--quiet' -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Desktop installation failed: $($install.ExitCode)" }
+          $state = Get-Content "$env:LOCALAPPDATA/Nocturne/current.json" | ConvertFrom-Json
+          if ($state.version -ne '${{ needs.build.outputs.version }}') { throw 'Wrong installed version' }
+          if (!(Test-Path "$env:LOCALAPPDATA/Nocturne/versions/$($state.version)/Nocturne/Nocturne.exe")) { throw 'Installed game missing' }
+          $desktop = [Environment]::GetFolderPath('Desktop')
+          $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $desktop 'Nocturne.lnk'))
+          if ($shortcut.TargetPath -ne (Join-Path $env:LOCALAPPDATA 'Nocturne\Nocturne-Launcher.exe')) { throw 'Desktop shortcut points to the wrong executable' }
+
+  publish:
+    name: Publish tested release
+    needs: [build, windows]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: nocturne-release
+          path: .release
+      - name: Verify and publish all assets before moving latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 pipeline/publish.py --directory .release --version '${{ needs.build.outputs.version }}' --repository '${{ github.repository }}' --commit '${{ github.sha }}'

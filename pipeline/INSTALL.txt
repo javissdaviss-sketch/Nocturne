@@ -1,0 +1,31 @@
+NOCTURNE — ONE-TIME DESKTOP SETUP
+
+1. Extract this entire ZIP. Do not run the launcher from inside the ZIP viewer.
+2. Double-click Install-Nocturne.cmd.
+3. Open the Nocturne shortcut created on your desktop.
+
+The launcher and game are installed for your Windows account under
+%LOCALAPPDATA%\Nocturne. Administrator access is not needed.
+
+From then on, the desktop shortcut checks GitHub Releases for a tested update
+on every launch. Updates are downloaded and checked automatically. If GitHub
+or your internet connection is unavailable, your installed game still runs.
+A brief update window is normal. Saves remain in the game's existing Godot
+user-data folder and are never replaced by the updater.
+
+The old standalone Nocturne.exe does not check for updates. Use the new
+Nocturne desktop shortcut after this one-time setup. The extracted setup
+folder can be removed after installation completes.
+
+If an update cannot start, the launcher tries the previous installed version.
+For manual recovery, open %LOCALAPPDATA%\Nocturne in File Explorer, type cmd
+in the address bar, then run:
+    Nocturne-Launcher.exe --rollback
+To play without checking the network:
+    Nocturne-Launcher.exe --offline
+
+Windows may identify these original, unsigned executables as an unrecognized
+app. No antivirus exclusions or global security-setting changes are required.
+
+No updates are available until the repository's first release is published.
+The setup includes a complete playable copy, so first installation works offline.
