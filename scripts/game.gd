@@ -32,7 +32,7 @@ var markers: Dictionary = {}
 var thumbnails: Dictionary = {}
 var ambience: AudioStreamPlayer
 var wings: AudioStreamPlayer
-var options: Dictionary = {"sensitivity":0.0025,"train":0.55,"wings":0.12,"shadows":true,"limit":60,"resolution":0}
+var options: Dictionary = {"sensitivity":0.0025,"train":0.55,"wings":0.12,"shadows":true,"atmosphere":true,"limit":60,"resolution":0}
 var smoke := false
 var capture_mode := false
 var capture_step := 0
@@ -599,6 +599,12 @@ func show_settings() -> void:
  shadow.position = Vector2(35,413)
  p.add_child(shadow)
  shadow.toggled.connect(func(value: bool): options.shadows=value; apply_settings())
+ var atmosphere_toggle := CheckBox.new()
+ atmosphere_toggle.text = "Rain & atmosphere"
+ atmosphere_toggle.button_pressed = bool(options.atmosphere)
+ atmosphere_toggle.position = Vector2(385,413)
+ p.add_child(atmosphere_toggle)
+ atmosphere_toggle.toggled.connect(func(value: bool): options.atmosphere=value; apply_settings())
  var fps := OptionButton.new()
  for text in ["30 FPS limit","60 FPS limit","120 FPS limit","Uncapped"]: fps.add_item(text)
  fps.selected = [30,60,120,0].find(int(options.limit))
@@ -626,6 +632,7 @@ func show_settings() -> void:
  )
 
 func apply_settings() -> void:
+ world.set_atmosphere_enabled(bool(options.atmosphere))
  fly.sensitivity = float(options.sensitivity)
  Engine.max_fps = int(options.limit)
  for child in world.get_children():

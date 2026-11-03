@@ -23,3 +23,11 @@ The full-screen UI consumed mouse motion before the fly's unhandled-input callba
 The native Windows updater, offline installer, GitHub Actions pipeline, checksum manifest, and draft-first publisher are included. Local updater and release-package tests are recorded in the implementation output. Windows-specific tests must run in the repository workflow before a release is published; they are not claimed to have run in this Linux workspace.
 
 Local updater validation passed nine Go test groups (including race detection), Go vet, Windows cross-compilation, and four Python publication/packaging test groups. Windows CI includes native updater tests, packaged game startup, quiet offline installation, installed-version verification, and desktop shortcut verification. Publishing remains gated on those jobs.
+
+## Rain and neon atmosphere
+
+Godot 4.6.3 GL Compatibility: graphical renders of the lounge, winter garden, and a close window show layered moving city buildings, housed neon signs and local halos, window beads/runoff, and exterior rain without shader or script errors. City geometry uses six MultiMesh batches; particles are bounded at 840 exterior rain streaks and 135 indoor dust motes. Distance fog starts 550 cm from the camera to keep nearby evidence clear. No Forward+ or volumetric-fog dependency is introduced.
+
+Case/collision/save, jump, graphical mouse, and full investigation checks pass. The atmosphere regression uses a separate user-data directory and checks rain containment, old-settings migration, the real Settings toggle, saved preferences across restart, and re-enabling emission/rendering.
+
+A fixed lounge view on Mesa llvmpipe software rendering measured median frame durations of 522 ms (on), 527 ms (off), and 485 ms (on again), twelve samples per state after warmup. The variation exceeds the observed effects delta; this is a comparison on software rendering, not a hardware frame-rate guarantee. Real GPU performance remains unmeasured. The Rain & atmosphere setting disables the added particles, window shader, halos, and haze.

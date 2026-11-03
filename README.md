@@ -10,7 +10,7 @@ For a one-time desktop install and future automatic updates, use **Nocturne-Setu
 
 Extract **Nocturne-Windows.zip**, then double-click **Nocturne.exe**. No installation, network connection, account, or Godot installation is required. Keep the included notices with the game. The unsigned executable may trigger Windows’ normal downloaded-app warning.
 
-Windows 10/11 x64, keyboard and mouse, and a dedicated GPU with OpenGL 3.3 support are the initial target. Actual Windows performance has not been measured in the Linux development environment. Defaults: 1280 × 800, 60 FPS cap, shadows enabled. Settings allow other resolutions, frame limits, shadows, sensitivity, and separate ambience/wing volume.
+Windows 10/11 x64, keyboard and mouse, and a dedicated GPU with OpenGL 3.3 support are the initial target. Actual Windows performance has not been measured in the Linux development environment. Defaults: 1280 × 800, 60 FPS cap, shadows enabled. Settings allow other resolutions, frame limits, shadows, sensitivity, and separate ambience/wing volume. Rain & atmosphere can be disabled in Settings to turn off window droplets, exterior precipitation, cabin dust, distance haze, and neon halos.
 
 A Linux x64 build is also included as a development convenience: `chmod +x Nocturne.x86_64` and run it on an X11-capable desktop with OpenGL 3.3 support.
 
@@ -50,6 +50,8 @@ Use **Godot 4.6.3** (4.6 series recommended), import `project.godot`, then press
 godot --path .
 ```
 
+The passing city uses layered parallax, housed neon signs with soft shader halos, rain on the sealed windows, exterior precipitation, and sparse lamplit dust. These effects run on the existing GL Compatibility renderer.
+
 The scenery is generated deterministically from original procedural geometry. World coordinates use one engine unit per centimetre. `world.gd` builds modular carriages and physical props; `fly.gd` handles centimetre-scale flight and cameras; `case_data.gd` contains the authored mystery; `case_state.gd` stores progress; `game.gd` owns interaction and UI. No external libraries, paid assets, API keys, or online services are needed.
 
 ### Verification
@@ -61,6 +63,7 @@ The mouse-look regression requires a graphical display (or Xvfb), because headle
 godot --headless --path . --editor --import --quit
 godot --headless --path . --script res://tests/test_case.gd
 godot --headless --path . --script res://tests/test_jump.gd
+XDG_DATA_HOME=/tmp/nocturne-atmosphere-tests godot --headless --path . --script res://tests/test_atmosphere.gd
 godot --headless --path . -- --smoke
 ```
 

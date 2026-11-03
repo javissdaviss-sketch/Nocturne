@@ -3,6 +3,12 @@ extends Node3D
 const Data = preload("res://scripts/case_data.gd")
 const LEAF_TEXTURE = preload("res://assets/textures/palm_leaf_albedo.png")
 const TABLE_TEXTURE = preload("res://assets/textures/table_mahogany_albedo.png")
+const Exterior = preload("res://scripts/exterior.gd")
+const RainWindows = preload("res://scripts/rain_windows.gd")
+const Atmosphere = preload("res://scripts/atmosphere.gd")
+var rain_windows: Node3D
+var atmosphere: Node3D
+var environment: Environment
 var materials: Dictionary = {}
 var hotspots: Dictionary = {}
 var scenery: Node3D
@@ -95,7 +101,13 @@ func light_at(p: Vector3, c: Color, energy: float, reach: float) -> OmniLight3D:
 func _ready() -> void:
  rng.seed = 4312
  make_environment()
- for i in range(3): carriage(i)
+ rain_windows = RainWindows.new()
+ add_child(rain_windows)
+ for i in range(3):
+  carriage(i)
+  rain_windows.add_carriage(i)
+ atmosphere = Atmosphere.new()
+ add_child(atmosphere)
  residential()
  dining()
  conservatory()
@@ -106,11 +118,20 @@ func make_environment() -> void:
  var env := WorldEnvironment.new()
  var e := Environment.new()
  e.background_mode = Environment.BG_COLOR
- e.background_color = Color("101c2c")
+ e.background_color = Color("09131f")
  e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
- e.ambient_light_color = Color("b6c7c4")
- e.ambient_light_energy = 0.45
+ e.ambient_light_color = Color("9aaeb9")
+ e.ambient_light_energy = 0.36
  e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+ # Depth fog begins beyond the cabin so nearby evidence stays crisp.
+ e.fog_enabled = true
+ e.fog_mode = Environment.FOG_MODE_DEPTH
+ e.fog_light_color = Color("132636")
+ e.fog_light_energy = 0.7
+ e.fog_depth_begin = 550.0
+ e.fog_depth_end = 3500.0
+ e.fog_depth_curve = 1.25
+ environment = e
  env.environment = e
  add_child(env)
  var sun := DirectionalLight3D.new()
@@ -120,17 +141,15 @@ func make_environment() -> void:
  sun.shadow_enabled = true
  sun.directional_shadow_max_distance = 4500
  add_child(sun)
- scenery = Node3D.new()
+ scenery = Exterior.new()
  add_child(scenery)
- for side in [-1,1]:
-  for i in range(36):
-   var h := rng.randf_range(160,900)
-   var p := Vector3(side*rng.randf_range(420,1500),h*0.5-110,i*140-1000)
-   box(p,Vector3(rng.randf_range(80,210),h,85),Color("152e3d"),false,scenery)
-   for j in range(6):
-    box(p+Vector3(side*-48,j*55-h*0.25,44),Vector3(10,20,1),Color("568e9d") if j%2 else Color("b55e83"),false,scenery,0,0.8)
-  for i in range(12):
-   box(Vector3(side*360,80,i*240),Vector3(2,4,180),Color("da63a2"),false,scenery,0,1)
+ scenery.build()
+
+func set_atmosphere_enabled(enabled: bool) -> void:
+ if is_instance_valid(rain_windows): rain_windows.visible = enabled
+ if is_instance_valid(atmosphere): atmosphere.set_enabled(enabled)
+ if environment != null: environment.fog_enabled = enabled
+ if is_instance_valid(scenery): scenery.set_effects_enabled(enabled)
 
 func carriage(index: int) -> void:
  var z := float(index)*840.0
@@ -486,5 +505,4 @@ func unlock_dispatch() -> void:
 
 func _process(delta: float) -> void:
  t += delta
- if is_instance_valid(scenery): scenery.position.z = fmod(t*95,140)
  for i in range(palms.size()): palms[i].rotation.z = sin(t*0.45+i)*0.012
