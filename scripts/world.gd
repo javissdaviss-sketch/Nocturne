@@ -3,6 +3,10 @@ extends Node3D
 const Data = preload("res://scripts/case_data.gd")
 const LEAF_TEXTURE = preload("res://assets/textures/palm_leaf_albedo.png")
 const TABLE_TEXTURE = preload("res://assets/textures/table_mahogany_albedo.png")
+const CABIN_FINISH = preload("res://shaders/cabin_surfaces.gdshader")
+const RUNNER_FINISH = preload("res://shaders/nocturne_runner.gdshader")
+const CarriageIdentity = preload("res://scripts/carriage_identity.gd")
+const LivedInDetails = preload("res://scripts/lived_in_details.gd")
 const Exterior = preload("res://scripts/exterior.gd")
 const RainWindows = preload("res://scripts/rain_windows.gd")
 const Atmosphere = preload("res://scripts/atmosphere.gd")
@@ -35,6 +39,26 @@ func mat(c: Color, metal: float = 0.0, glow: float = 0.0) -> StandardMaterial3D:
   m.emission_energy_multiplier = glow
  materials[key] = m
  return m
+
+func cabin_finish(kind: int, color: Color) -> ShaderMaterial:
+ var key := "cabin_%d_%s" % [kind,str(color)]
+ if materials.has(key): return materials[key]
+ var material := ShaderMaterial.new()
+ material.shader = CABIN_FINISH
+ material.set_shader_parameter("finish",kind)
+ material.set_shader_parameter("finish_color",color)
+ materials[key] = material
+ return material
+
+func runner_finish(index: int) -> ShaderMaterial:
+ var key := "runner_%d" % index
+ if materials.has(key): return materials[key]
+ var material := ShaderMaterial.new()
+ material.shader = RUNNER_FINISH
+ material.set_shader_parameter("wool_color",Color("613e39") if index == 2 else Color("234740"))
+ material.set_shader_parameter("thread_color",Color("b9985c"))
+ materials[key] = material
+ return material
 
 func mesh_obj(parent: Node3D, mesh: Mesh, p: Vector3, color: Color, solid: bool = false, metal: float = 0.0, glow: float = 0.0) -> MeshInstance3D:
  var o := MeshInstance3D.new()
@@ -112,6 +136,12 @@ func _ready() -> void:
  dining()
  conservatory()
  people()
+ var identity := CarriageIdentity.new()
+ add_child(identity)
+ identity.build()
+ var details := LivedInDetails.new()
+ add_child(details)
+ details.build()
  make_hotspots()
 
 func make_environment() -> void:
@@ -154,15 +184,15 @@ func set_atmosphere_enabled(enabled: bool) -> void:
 func carriage(index: int) -> void:
  var z := float(index)*840.0
  var shade := Color("243d39") if index != 1 else Color("233f44")
- box(Vector3(0,-5,z+400),Vector3(340,10,800),WOOD)
+ box(Vector3(0,-5,z+400),Vector3(340,10,800),WOOD).material_override = cabin_finish(0,Color("66503c"))
  for x in range(-160,161,20):
   box(Vector3(x,0.15,z+400),Vector3(0.65,0.3,800),Color("866a4b"),false)
  for j in range(12):
   box(Vector3(0,0.25,z+j*68+10),Vector3(340,0.25,0.5),Color("241f1e"),false)
- box(Vector3(0,0.8,z+400),Vector3(110,1.2,780),Color("31514c") if index != 2 else Color("795446"))
+ box(Vector3(0,0.8,z+400),Vector3(110,1.2,780),Color.WHITE).material_override = runner_finish(index)
  for side in [-1,1]:
   box(Vector3(side*58,1.5,z+400),Vector3(1,0.4,780),GOLD,false)
-  box(Vector3(side*171,45,z+400),Vector3(7,90,800),shade)
+  box(Vector3(side*171,45,z+400),Vector3(7,90,800),shade).material_override = cabin_finish(2,shade)
   box(Vector3(side*171,273,z+400),Vector3(7,44,800),shade)
   box(Vector3(side*167,94,z+400),Vector3(3,3,800),GOLD,false, self,0.6)
   box(Vector3(side*167,249,z+400),Vector3(3,3,800),GOLD,false, self,0.6)
@@ -207,8 +237,6 @@ func carriage(index: int) -> void:
    rib.rotation.z = side*0.48
   box(Vector3(0,287,rz),Vector3(209,3,4),GOLD,false)
  for side in [-1,1]: box(Vector3(side*78,291,z+400),Vector3(2,2,780),Color("e2bf89"),false,self,0,1.3)
- var names := ["06   /   THE RESIDENCES", "07   /   THE NIGHT LOUNGE", "08   /   THE WINTER GARDEN"]
- sign_text(names[index],Vector3(0,247,z+788),0.36,GOLD)
  if index == 0: sign_text("05  ←   RESIDENT ACCESS ONLY",Vector3(0,160,2),0.25,GOLD)
  if index == 2: sign_text("09  →   RESIDENT ACCESS ONLY",Vector3(0,160,z+797),0.25,GOLD)
 
@@ -250,10 +278,11 @@ func table(p: Vector3, width: float = 72, depth: float = 72) -> void:
   for z in [-1,1]: cyl(p+Vector3(x*(width/2-8),36,z*(depth/2-8)),2,72,GOLD,true,self,-1,0.5)
 
 func seat(p: Vector3, color: Color = TEAL) -> void:
- box(p+Vector3(0,22,0),Vector3(64,42,65),color)
+ box(p+Vector3(0,22,0),Vector3(64,42,65),color).material_override = cabin_finish(1,color)
  var back := box(p+Vector3(0,63,27),Vector3(64,63,12),color)
+ back.material_override = cabin_finish(1,color)
  back.rotation.x = -0.08
- for x in [-27,27]: box(p+Vector3(x,41,0),Vector3(9,19,61),color)
+ for x in [-27,27]: box(p+Vector3(x,41,0),Vector3(9,19,61),color).material_override = cabin_finish(1,color)
  for x in [-20,0,20]: box(p+Vector3(x,60,19.8),Vector3(0.5,43,0.5),GOLD,false)
  for x in [-23,23]: cyl(p+Vector3(x,5,-20),2,10,GOLD)
 
@@ -293,6 +322,23 @@ func palm_blade(surface: SurfaceTool, base: Vector3, tip: Vector3, width: float,
 func palm_spine(along: float, length: float, lift: float) -> Vector3:
  return Vector3(0,lift*sin(along*PI*0.8)-length*0.30*along*along,length*along)
 
+func palm_rib(parent: Node3D, length: float, lift: float) -> void:
+ # One mesh per curved midrib keeps the richer foliage affordable to render.
+ var cylinder := CylinderMesh.new()
+ cylinder.top_radius = 0.35
+ cylinder.bottom_radius = 0.35
+ cylinder.height = 1.0
+ cylinder.radial_segments = 8
+ var surface := SurfaceTool.new()
+ surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+ for segment in range(8):
+  var a := palm_spine(float(segment)/8,length,lift)
+  var b := palm_spine(float(segment+1)/8,length,lift)
+  var delta := b-a
+  var basis := Basis(Quaternion(Vector3.UP,delta.normalized()))*Basis.from_scale(Vector3(1,delta.length(),1))
+  surface.append_from(cylinder,0,Transform3D(basis,(a+b)*0.5))
+ mesh_obj(parent,surface.commit(),Vector3.ZERO,Color("748c43"))
+
 func plant(p: Vector3, height: float = 100, spread: float = 35) -> void:
  cyl(p+Vector3(0,14,0),17,28,Color("a77758"),true,self,22)
  cyl(p+Vector3(0,28,0),21,2,Color("292e25"),false)
@@ -313,8 +359,7 @@ func plant(p: Vector3, height: float = 100, spread: float = 35) -> void:
   var lift := length*(0.85 if j%3 == 0 else 0.48)
   var surface := SurfaceTool.new()
   surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-  for segment in range(8):
-   line(palm_spine(float(segment)/8,length,lift),palm_spine(float(segment+1)/8,length,lift),0.35,Color("748c43"),frond)
+  palm_rib(frond,length,lift)
   for pair in range(1,11):
    var along := float(pair)/12
    var base := palm_spine(along,length,lift)
@@ -374,11 +419,10 @@ func dining() -> void:
     chair.add_child(item)
     item.position = Vector3(old.x+110,old.y,old.z-z-75)
   chair.rotation.y = PI
-  cyl(Vector3(-101,78,z),25,0.8,CREAM,false)
+  cyl(Vector3(-101,78,z),25,0.8,CREAM,false).mesh.radial_segments = 64
   for px in [-139,-62]:
    line(Vector3(px,78,z-17),Vector3(px,78,z+17),0.6,GOLD)
   cyl(Vector3(-127,87,z+28),3,18,Color("6a8b7b"),false,self,2)
-  ball(Vector3(-127,99,z+28),Vector3(16,13,16),Color("e7b8bd"))
  # Cup: open cylinder constructed from fine ceramic segments.
  var cup := Vector3(-88,78,1250)
  cyl(cup+Vector3(0,0.4,0),6.5,0.8,CREAM)
@@ -422,7 +466,6 @@ func dining() -> void:
  box(Vector3(121,44,1456.4),Vector3(5,7,0.25),CREAM,false)
  sign_text("V9\nSABLE",Vector3(121,44,1456.1),0.025,Color("4c3650")).rotation.y = PI
  for z in [940,1580]: plant(Vector3(127,0,z),175,40)
- sign_text("N O C T U R N E",Vector3(125,174,1552),0.42,GOLD).rotation.y = -PI/2
  for z in [1110,1320]:
   box(Vector3(135,83,z),Vector3(53,6,57),Color("88684c"))
   cyl(Vector3(135,40,z),4,80,GOLD)
@@ -455,9 +498,6 @@ func conservatory() -> void:
   var petal := ball(Vector3(-100+cos(a)*7,124+sin(a)*7,2020),Vector3(9,5,2),Color("e3d4dc"))
   petal.rotation.z = a
  ball(Vector3(-100,124,2019),Vector3(3,3,3),Color("d5b365"))
- # Small etched symbols repeated on a botanical plaque.
- var plaque := sign_text("THE WINTER GARDEN\nLiving things. Moving home.",Vector3(0,264,2430),0.35,GOLD)
- plaque.rotation.y = 0
 
 func human(p: Vector3, coat: Color, hair: Color, name_text: String) -> void:
  var n := Node3D.new()

@@ -50,6 +50,8 @@ Use **Godot 4.6.3** (4.6 series recommended), import `project.godot`, then press
 godot --path .
 ```
 
+The carriages carry a shared Deco identity: mounted twelve-carriage directories and service plaques, patterned runners, walnut flooring, woven seating, travel luggage and reading shelves, laid dining settings, and botanical work supplies. The six physical clues retain their original positions and inspection flow.
+
 The passing city uses layered parallax, housed neon signs with soft shader halos, rain on the sealed windows, exterior precipitation, and sparse lamplit dust. These effects run on the existing GL Compatibility renderer.
 
 The scenery is generated deterministically from original procedural geometry. World coordinates use one engine unit per centimetre. `world.gd` builds modular carriages and physical props; `fly.gd` handles centimetre-scale flight and cameras; `case_data.gd` contains the authored mystery; `case_state.gd` stores progress; `game.gd` owns interaction and UI. No external libraries, paid assets, API keys, or online services are needed.

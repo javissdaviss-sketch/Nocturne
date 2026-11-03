@@ -31,3 +31,9 @@ Godot 4.6.3 GL Compatibility: graphical renders of the lounge, winter garden, an
 Case/collision/save, jump, graphical mouse, and full investigation checks pass. The atmosphere regression uses a separate user-data directory and checks rain containment, old-settings migration, the real Settings toggle, saved preferences across restart, and re-enabling emission/rendering.
 
 A fixed lounge view on Mesa llvmpipe software rendering measured median frame durations of 522 ms (on), 527 ms (off), and 485 ms (on again), twelve samples per state after warmup. The variation exceeds the observed effects delta; this is a comparison on software rendering, not a hardware frame-rate guarantee. Real GPU performance remains unmeasured. The Rain & atmosphere setting disables the added particles, window shader, halos, and haze.
+
+## Interior identity and set dressing
+
+Graphical GL Compatibility checks cover the lounge, residences, garden, close dining setting, and mounted twelve-carriage directory. The new runners, wood and upholstery shaders compile without errors. Travel/service/botanical props are batched into 39 MultiMeshes and the signage fixture geometry into three; decorative props add no collision geometry or interactions. The existing six clues, access duct, covered crime scene, and settings retain their behavior. Case/collision/save, jump, atmosphere persistence, graphical mouse, and complete investigation checks pass.
+
+Palm midrib segments are merged into one mesh per frond while keeping the crown sway. In the same lounge camera, a render snapshot decreased from approximately 8,575 draw calls before this merge to 4,477 after it, including the new dressing. These counts describe this camera under Mesa software rendering; real GPU frame rate remains unmeasured.
