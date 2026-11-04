@@ -84,6 +84,14 @@ godot --headless --path . --export-release "Linux Desktop" ../builds/linux/Noctu
 
 Three playable carriages; the other nine are established by the setting and locked end doors. Single-player, one authored case, stylized procedural art, text conversations, and simple puzzles. No combat, ceiling crawling, voiced dialogue, full train simulation, or gamepad support. This is a prototype, not a finished commercial game.
 
+## Cyber-luxe interiors
+
+The supplied Agatha cyber-luxe reference boards inform original in-engine furniture and finishes: botanical brocade, mahogany wainscoting, brass panel frames, ivory corridor ceilings, fluted lamps, folded teal curtains, and velvet upholstery. Sleeper suites have buttoned headboards, softened mattresses and pillows, bedside controls, travel trunks, data slates, filament lamps, and pocket watches. The dining salon has dressed tables and Deco wall medallions; the living archive has brass-trimmed planters and specimen sensors. The boards are visual references rather than production-ready individual models or seamless textures; their collages are not pasted into the game.
+
+The notebook's **Life aboard the Nocturne** page introduces the residential night network, the train's tradition of repair and craftsmanship, and the botanical trust's conservation work. New details preserve the six evidence positions, fourteen open compartment entrances, cabinet duct, and dispatch puzzle.
+
+Static primitive visuals use spatially grouped MultiMeshes after collision compilation. Original physics nodes remain in place, and the opening cabinet, dispatch drawer, moving palms, city, rain, and particles retain independent behavior. Small trim does not cast shadows. Materials and cushion meshes are shared; brocade and wood grain are procedural, with no runtime asset downloads. `tests/capture_art.gd` produces repeatable corridor, sleeper, salon, archive, and fly-scale evidence views for graphical review.
+
 ## Credits and notices
 
 Original story, geometry, UI, and synthesized audio created for this project. No Agatha Christie characters or plots are used. Godot is distributed under the MIT license. The two bundled fonts are DejaVu Serif and DejaVu Sans, renamed for project use; their license is included in `THIRD_PARTY_NOTICES.txt`.

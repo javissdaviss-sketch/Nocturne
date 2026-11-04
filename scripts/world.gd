@@ -17,10 +17,13 @@ const Exterior = preload("res://scripts/exterior.gd")
 const RainWindows = preload("res://scripts/rain_windows.gd")
 const TrainLayout = preload("res://scripts/train_layout.gd")
 const Atmosphere = preload("res://scripts/atmosphere.gd")
+const CyberLuxe = preload("res://scripts/cyber_luxe.gd")
+const InteriorBatches = preload("res://scripts/interior_batches.gd")
 var rain_windows: Node3D
 var atmosphere: Node3D
 var environment: Environment
 var materials: Dictionary = {}
+var cushion_meshes: Dictionary = {}
 var hotspots: Dictionary = {}
 var scenery: Node3D
 var cabinet_door: MeshInstance3D
@@ -91,6 +94,61 @@ func ball(p: Vector3, size: Vector3, c: Color, parent: Node3D = self, glow: floa
  o.scale = size * 0.5
  return o
 
+func cushion(p: Vector3, size: Vector3, color: Color, bevel: float = 2.0, parent: Node3D = self) -> MeshInstance3D:
+ # Chamfered upholstery: planar faces, softened edges and corners, shared meshes.
+ var key := str(size)+str(bevel)
+ if not cushion_meshes.has(key):
+  var surface := SurfaceTool.new()
+  surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+  var h := size*0.5
+  var inner := h-Vector3.ONE*bevel
+  for axis in range(3):
+   var u := (axis+1)%3
+   var v := (axis+2)%3
+   for side in [-1,1]:
+    var face: Array[Vector3] = []
+    for corner in [Vector2(-1,-1),Vector2(1,-1),Vector2(1,1),Vector2(-1,1)]:
+     var point := Vector3.ZERO
+     point[axis] = h[axis]*side
+     point[u] = inner[u]*corner.x
+     point[v] = inner[v]*corner.y
+     face.append(point)
+    cushion_face(surface,face)
+  for axis in range(3):
+   var u := (axis+1)%3
+   var v := (axis+2)%3
+   for a in [-1,1]:
+    for b in [-1,1]:
+     var face: Array[Vector3] = []
+     for corner in [Vector2(-1,0),Vector2(1,0),Vector2(1,1),Vector2(-1,1)]:
+      var point := Vector3.ZERO
+      point[axis] = inner[axis]*corner.x
+      point[u] = (h[u] if corner.y == 0 else inner[u])*a
+      point[v] = (inner[v] if corner.y == 0 else h[v])*b
+      face.append(point)
+     cushion_face(surface,face)
+  for x in [-1,1]:
+   for y in [-1,1]:
+    for z in [-1,1]:
+     cushion_face(surface,[Vector3(h.x*x,inner.y*y,inner.z*z),Vector3(inner.x*x,h.y*y,inner.z*z),Vector3(inner.x*x,inner.y*y,h.z*z)])
+  cushion_meshes[key] = surface.commit()
+ var node := mesh_obj(parent,cushion_meshes[key],p,color)
+ node.material_override = cabin_finish(1,color)
+ return node
+
+func cushion_face(surface: SurfaceTool, points: Array[Vector3]) -> void:
+ var normal := (points[1]-points[0]).cross(points[2]-points[0]).normalized()
+ var centre := Vector3.ZERO
+ for point in points: centre += point
+ if normal.dot(centre) < 0:
+  points.reverse()
+  normal = -normal
+ for i in range(1,points.size()-1):
+  for point in [points[0],points[i+1],points[i]]:
+   surface.set_normal(normal)
+   surface.set_uv(Vector2(point.x,point.z)*0.05)
+   surface.add_vertex(point)
+
 func cyl(p: Vector3, radius: float, height: float, c: Color, solid: bool = true, parent: Node3D = self, top: float = -1.0, metal: float = 0.0) -> MeshInstance3D:
  var m := CylinderMesh.new()
  m.top_radius = radius if top < 0 else top
@@ -156,8 +214,14 @@ func _ready() -> void:
  var rooms := TrainLayout.new()
  add_child(rooms)
  rooms.build(self)
+ var luxe := CyberLuxe.new()
+ add_child(luxe)
+ luxe.build_interior(self,rooms)
  make_hotspots()
  collision_stats = solid_geometry.build(self,[scenery,rain_windows,atmosphere])
+ var exclusions: Array[Node] = [scenery,rain_windows,atmosphere,cabinet_door,drawer]
+ for palm in palms: exclusions.append(palm)
+ InteriorBatches.new().build(self,exclusions)
 
 func make_environment() -> void:
  var env := WorldEnvironment.new()
@@ -165,8 +229,8 @@ func make_environment() -> void:
  e.background_mode = Environment.BG_COLOR
  e.background_color = Color("09131f")
  e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
- e.ambient_light_color = Color("9aaeb9")
- e.ambient_light_energy = 0.36
+ e.ambient_light_color = Color("b6c8c4")
+ e.ambient_light_energy = 0.58
  e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
  # Depth fog begins beyond the cabin so nearby evidence stays crisp.
  e.fog_enabled = true
@@ -198,7 +262,7 @@ func set_atmosphere_enabled(enabled: bool) -> void:
 
 func carriage(index: int) -> void:
  var z := float(index)*840.0
- var shade := Color("243d39") if index != 1 else Color("233f44")
+ var shade := Color("432d25") if index != 2 else Color("233d35")
  box(Vector3(0,-5,z+400),Vector3(1020,10,800),WOOD).material_override = cabin_finish(0,Color("66503c"))
  for x in range(-500,501,20):
   box(Vector3(x,0.15,z+400),Vector3(0.65,0.3,800),Color("866a4b"),false)
@@ -241,7 +305,7 @@ func carriage(index: int) -> void:
   box(Vector3(0,233,z+820),Vector3(120,6,40),Color("283a3b"))
  if index == 0: box(Vector3(0,110,-4),Vector3(108,220,8),Color("1a3337"))
  if index == 2: box(Vector3(0,110,z+804),Vector3(108,220,8),Color("1a3337"))
- if index != 2: box(Vector3(0,297,z+400),Vector3(1020,6,800),Color("253733"))
+ if index != 2: box(Vector3(0,297,z+400),Vector3(1020,6,800),CREAM).material_override = cabin_finish(4,Color("c1ae8d"))
  else:
   box(Vector3(0,297,z+400),Vector3(1020,6,800),Color("233e43"))
  for j in range(7):
@@ -293,12 +357,16 @@ func table(p: Vector3, width: float = 72, depth: float = 72) -> void:
   for z in [-1,1]: cyl(p+Vector3(x*(width/2-8),36,z*(depth/2-8)),2,72,GOLD,true,self,-1,0.5)
 
 func seat(p: Vector3, color: Color = TEAL) -> void:
- box(p+Vector3(0,22,0),Vector3(64,42,65),color).material_override = cabin_finish(1,color)
- var back := box(p+Vector3(0,63,27),Vector3(64,63,12),color)
- back.material_override = cabin_finish(1,color)
+ box(p+Vector3(0,22,0),Vector3(62,35,63),Color("503528")).material_override = cabin_finish(2,Color("503528"))
+ cushion(p+Vector3(0,41,0),Vector3(64,12,65),color,2.5)
+ var back := cushion(p+Vector3(0,63,27),Vector3(64,63,12),color,3.0)
  back.rotation.x = -0.08
- for x in [-27,27]: box(p+Vector3(x,41,0),Vector3(9,19,61),color).material_override = cabin_finish(1,color)
- for x in [-20,0,20]: box(p+Vector3(x,60,19.8),Vector3(0.5,43,0.5),GOLD,false)
+ for x in [-27,27]:
+  cushion(p+Vector3(x,50,0),Vector3(10,13,61),color,2)
+  line(p+Vector3(x,54,-29),p+Vector3(x,54,27),0.65,GOLD)
+ for x in [-20,0,20]:
+  for y in [57,77]: ball(p+Vector3(x,y,19),Vector3(1.8,1.8,1.2),GOLD)
+ line(p+Vector3(-29,37,-32),p+Vector3(29,37,-32),0.7,GOLD)
  for x in [-23,23]: cyl(p+Vector3(x,5,-20),2,10,GOLD)
 
 func leaf_material(dark: bool) -> StandardMaterial3D:

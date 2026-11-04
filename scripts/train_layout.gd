@@ -40,8 +40,8 @@ func build(w: Node3D) -> void:
 
 func compartment(w: Node3D, car: int, side: int, lo: float, hi: float, entry: float, title: String) -> void:
  var x := side*CORRIDOR_EDGE
- var finish := Color("485258") if car == 0 else Color("35534a")
- if car == 1: finish = Color("59433b")
+ var finish := Color("50372a") if car == 0 else Color("294b3e")
+ if car == 1: finish = Color("4c3026")
  # Solid wall sections and lintel leave a real 92 cm wide, 222 cm high door.
  for span in [Vector2(lo,entry-46),Vector2(entry+46,hi)]:
   w.box(Vector3(x,148,(span.x+span.y)*0.5),Vector3(5,296,span.y-span.x),finish,true,self).material_override = w.cabin_finish(2,finish)
@@ -58,7 +58,7 @@ func compartment(w: Node3D, car: int, side: int, lo: float, hi: float, entry: fl
  w.box(Vector3(x-side*4,251,entry),Vector3(1,22,104),STEEL,true,self)
  w.light_at(Vector3(side*250,241,(lo+hi)*0.5),Color("ffd9a1") if car != 2 else Color("badfc8"),1.5,330)
  # Outer-room floor insets make the wider volume legible without scaling props.
- w.box(Vector3(side*332,0.8,(lo+hi)*0.5),Vector3(300,1,hi-lo-18),Color("283a38") if car != 1 else Color("533b35"),true,self)
+ w.box(Vector3(side*332,0.8,(lo+hi)*0.5),Vector3(300,1,hi-lo-18),Color.WHITE,true,self).material_override = w.runner_finish(car)
  if car == 0:
   sleeper(w,side,lo,hi)
  elif car == 1:
@@ -69,15 +69,15 @@ func compartment(w: Node3D, car: int, side: int, lo: float, hi: float, entry: fl
 func sleeper(w: Node3D, side: int, lo: float, hi: float) -> void:
  var z := (lo+hi)*0.5
  # Human-sized bed, fitted storage, reading light and a private sitting area.
- w.box(Vector3(side*415,24,z),Vector3(135,48,205),STEEL,true,self)
- w.box(Vector3(side*415,54,z),Vector3(132,14,200),WARM,true,self)
- w.box(Vector3(side*415,64,z+22),Vector3(134,7,149),Color("4b7372"),true,self).material_override = w.cabin_finish(1,Color("4b7372"))
- w.box(Vector3(side*415,66,z-76),Vector3(85,13,34),Color("eee2ca"),true,self)
- w.box(Vector3(side*415,58,z-105),Vector3(141,116,6),STEEL,true,self)
- w.box(Vector3(side*230,112,hi-30),Vector3(95,224,48),Color("50483e"),true,self)
+ w.box(Vector3(side*415,24,z),Vector3(135,48,205),Color("493025"),true,self).material_override = w.cabin_finish(2,Color("63412e"))
+ w.cushion(Vector3(side*415,54,z),Vector3(132,14,200),WARM,3,self)
+ w.box(Vector3(side*415,64,z+22),Vector3(134,7,149),Color("204d49"),true,self).material_override = w.cabin_finish(1,Color("204d49"))
+ for dx in [-28,28]: w.cushion(Vector3(side*415+dx,66,z-76),Vector3(51,13,34),Color("eee2ca"),4,self)
+ w.box(Vector3(side*415,58,z-105),Vector3(141,116,6),Color("493025"),true,self).material_override = w.cabin_finish(2,Color("63412e"))
+ w.box(Vector3(side*230,112,hi-30),Vector3(95,224,48),Color("493025"),true,self).material_override = w.cabin_finish(2,Color("63412e"))
  for dx in [-23,23]: w.box(Vector3(side*230+dx,110,hi-55),Vector3(2,15,2),BRASS,true,self)
  w.table(Vector3(side*242,0,lo+75),75,65)
- w.seat(Vector3(side*242,0,lo+145),Color("635d66"))
+ w.seat(Vector3(side*242,0,lo+145),Color("204d49"))
 
 func hospitality(w: Node3D, side: int, lo: float, hi: float) -> void:
  var length := hi-lo

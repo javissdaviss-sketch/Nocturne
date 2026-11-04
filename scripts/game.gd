@@ -187,8 +187,8 @@ func show_title() -> void:
  hud.visible = false
  overlay(0.0)
  fly.inspection = false
- fly.camera.position = Vector3(-8,126,930)
- fly.camera.look_at(Vector3(-65,100,1285))
+ fly.camera.position = Vector3(-225,138,1022)
+ fly.camera.look_at(Vector3(-386,100,1260))
  var shade := ColorRect.new()
  shade.size = Vector2(1440,900)
  var shader := Shader.new()
@@ -465,6 +465,11 @@ func show_notebook(selected: String = "") -> void:
  objective.custom_minimum_size = Vector2(360,53)
  objective.pressed.connect(func(): show_notebook())
  list.add_child(objective)
+ var life := Button.new()
+ life.text = "LIFE ABOARD THE NOCTURNE"
+ life.custom_minimum_size = Vector2(360,50)
+ life.pressed.connect(func(): show_notebook("world"))
+ list.add_child(life)
  for id in state.found:
   var b := Button.new()
   b.text = ("◆  " if Data.CLUES.has(id) else "·  ")+Data.record(id).title
@@ -477,6 +482,14 @@ func show_notebook(selected: String = "") -> void:
   label(p,"Elias Vale died after his evening tea.",Vector2(465,158),Vector2(810,55),27,PAPER,true)
   label(p,"Find a means, a motive, and a link to the culprit. You are a witness, not a courier: examine the objects where they lie. Eavesdrop near the residents to hear their accounts.",Vector2(465,233),Vector2(800,110),19,MUTED)
   label(p,"06   RESIDENCES      ← behind the lounge\nVale’s desk · engineer · maintenance terminal\n\n07   DINING LOUNGE\nVale’s cup · steward · service cabinet and cable opening\n\n08   WINTER GARDEN   → beyond the lounge\nBotanist · shipment label · symbol lock and ledger",Vector2(465,360),Vector2(810,245),17,PAPER)
+ elif selected=="world":
+  label(p,"A CITY THAT NEVER QUITE ARRIVES",Vector2(465,158),Vector2(810,35),14,GOLD)
+  label(p,"A home between stations.",Vector2(465,205),Vector2(810,65),32,PAPER,true)
+  label(p,"The Nocturne is a twelve-carriage residence on the night network. Beyond its rain-streaked windows, the city changes districts; inside, neighbours keep the same tables, small rituals, and long memories.",Vector2(465,286),Vector2(795,115),19,PAPER)
+  label(p,"OLD CRAFT / QUIET MACHINES",Vector2(465,413),Vector2(795,30),13,GOLD)
+  label(p,"Mahogany conceals service conduits. Brass frames tiny displays. Velvet quiets the rails. The technology is maintained, repaired, and lived with: comfort comes before spectacle.",Vector2(465,451),Vector2(795,97),18,MUTED)
+  label(p,"THE LIVING ARCHIVE",Vector2(465,553),Vector2(795,25),13,GOLD)
+  label(p,"The botanical trust preserves threatened plants for their eventual return. A cutting is a future forest; its disappearance matters.",Vector2(465,586),Vector2(795,65),17,PAPER)
  else:
   var r := Data.record(selected)
   label(p,r.place+"   /   "+r.kind,Vector2(465,157),Vector2(820,35),12,GOLD)

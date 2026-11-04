@@ -49,6 +49,9 @@ func run() -> void:
  await process_frame
  var space: PhysicsDirectSpaceState3D = world.get_world_3d().direct_space_state
  check(world.hotspots.size()==15,"All fifteen physical/listening hotspots exist")
+ var render_stats: Dictionary = world.get_meta("interior_batch_stats")
+ check(render_stats.sources > render_stats.batches,"Static rendering uses fewer batches than source meshes")
+ check(world.cabinet_door.visible and world.drawer.visible,"Puzzle doors keep independent visuals before unlocking")
  # Continuous aisle across all three carriage boundaries.
  var query := PhysicsRayQueryParameters3D.create(Vector3(0,105,20),Vector3(0,105,2460),1)
  check(space.intersect_ray(query).is_empty(),"All three carriages connected by a clear aisle")
@@ -83,6 +86,7 @@ func run() -> void:
  check(not space.intersect_ray(query).is_empty(),"Cabinet door blocks bottle before release")
  world.unlock_cabinet()
  world.unlock_dispatch()
+ check(not world.cabinet_door.visible and not world.drawer.visible,"Puzzle visuals disappear when their colliders release")
  await physics_frame
  await process_frame
  var approaches := {"cup":Vector3(-88,95,1250),"chemical":Vector3(101,50,1460),"ledger":Vector3(-100,96,2235),"note":Vector3(-102,90,285),"label":Vector3(102,94,1905),"log":Vector3(102,100,655)}
