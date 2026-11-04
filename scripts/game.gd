@@ -222,9 +222,7 @@ func start_game(fresh: bool) -> void:
   if state.cabinet_open: world.unlock_cabinet()
   if state.dispatch_open: world.unlock_dispatch()
  apply_settings()
- fly.position = Vector3(state.saved_position[0],state.saved_position[1],state.saved_position[2])
- fly.reset_movement()
- fly.safe_position = fly.position
+ fly.restore_position(Vector3(state.saved_position[0],state.saved_position[1],state.saved_position[2]))
  fly.yaw = PI
  fly.pitch = -0.12
  resume_game()
@@ -292,7 +290,7 @@ func _process(delta: float) -> void:
     if (id=="latch" and state.cabinet_open) or (id=="dispatch" and state.dispatch_open): continue
     var q := PhysicsRayQueryParameters3D.create(fly.position,p,1)
     var hit := get_world_3d().direct_space_state.intersect_ray(q)
-    if hit and hit.position.distance_to(p)>(10.0 if id=="cup" else 4.0): continue
+    if interaction_is_blocked(hit,id,p): continue
     best = d
     nearest = id
   if nearest != "": prompt.text = "E   " + ("Listen · " if Data.TALKS.has(nearest) else "Inspect · ") + Data.record(nearest).title
@@ -301,6 +299,17 @@ func _process(delta: float) -> void:
   else: prompt.text = "E   Land on a nearby surface"
  if is_instance_valid(wings): wings.volume_db = linear_to_db(max(0.0001,float(options.wings)*(0.25 if fly.landed or fly.jumping or mode!="play" else 1.0)))
  if capture_mode: capture_sequence()
+
+func interaction_is_blocked(hit: Dictionary, id: String, target: Vector3) -> bool:
+ if hit.is_empty(): return false
+ # A person's own surface is the interaction target, even when the authored
+ # conversation point lies beneath their coat. Other objects still occlude it.
+ if Data.TALKS.has(id):
+  var node: Node = hit.collider
+  while node != null and node != world:
+   if node.get_meta("hotspot_id","") == id: return false
+   node = node.get_parent()
+ return hit.position.distance_to(target) > (10.0 if id=="cup" else 4.0)
 
 func _unhandled_input(event: InputEvent) -> void:
  if not event is InputEventKey or not event.pressed or event.echo: return

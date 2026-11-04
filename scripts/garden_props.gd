@@ -1,6 +1,5 @@
 extends "res://scripts/lived_in_details.gd"
 ## Recognizable working-garden props, kept on the outer benches and floor margins.
-var support_count := 0
 
 func build() -> void:
  watering_can(Vector3(134,50.2,2177))
@@ -60,29 +59,14 @@ func propagation_rack(p: Vector3) -> void:
 func slatted_crate(p: Vector3) -> void:
  var wood := Color("937453")
  box(p+Vector3(0,1.2,0),Vector3(32,2.4,36),wood)
- support_box(p+Vector3(0,1.2,0),Vector3(32,2.4,36))
  for x in [-15,15]:
   for z in [-17,17]:
    box(p+Vector3(x,13,z),Vector3(2.0,26,2.0),Color("604934"))
-   support_box(p+Vector3(x,13,z),Vector3(2.0,26,2.0))
  for height in [6,14,22]:
   for side in [-1,1]:
    box(p+Vector3(side*15.5,height,0),Vector3(1.4,5.0,35),wood)
    box(p+Vector3(0,height,side*17.5),Vector3(32,5.0,1.4),wood)
-   support_box(p+Vector3(side*15.5,height,0),Vector3(1.4,5.0,35))
-   support_box(p+Vector3(0,height,side*17.5),Vector3(32,5.0,1.4))
  for x in [-7,7]:
   cyl(p+Vector3(x,9,0),11,15,Color("a57e5f"))
   cyl(p+Vector3(x,16.8,0),9.8,0.4,Color("403d2e"))
- # Slat collisions preserve the real gaps; the fly can enter and perch on the rim.
-
-func support_box(p: Vector3, size: Vector3) -> void:
- var body := StaticBody3D.new()
- var shape := CollisionShape3D.new()
- var box_shape := BoxShape3D.new()
- box_shape.size = size
- shape.shape = box_shape
- body.position = p
- add_child(body)
- body.add_child(shape)
- support_count += 1
+ # World compiles each visible slat, preserving gaps and the perchable rim.

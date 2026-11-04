@@ -39,6 +39,12 @@ jobs:
         run: godot --headless --path . --editor --import --quit
       - name: Evidence, collision, and save tests
         run: timeout 60s godot --headless --path . --script res://tests/test_case.gd
+      - name: Solid geometry transforms and prop collision regression
+        env:
+          XDG_DATA_HOME: ${{ runner.temp }}/nocturne-solid-tests
+        run: |
+          timeout 60s godot --headless --path . --script res://tests/test_solid_geometry.gd
+          timeout 90s godot --headless --path . --script res://tests/test_solid_objects.gd
       - name: Jump and double-tap takeoff regression
         run: timeout 60s godot --headless --path . --script res://tests/test_jump.gd
       - name: Atmosphere controls and rain containment
@@ -50,6 +56,12 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: '1'
           LP_NUM_THREADS: '4'
         run: timeout 180s xvfb-run -a godot --path . --audio-driver Dummy --script res://tests/test_mouse.gd
+      - name: Graphical object collision and movement regression
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          LP_NUM_THREADS: '4'
+          XDG_DATA_HOME: ${{ runner.temp }}/nocturne-solid-graphical-tests
+        run: timeout 180s xvfb-run -a godot --path . --audio-driver Dummy --script res://tests/test_solid_objects.gd
       - name: Complete investigation integration
         run: timeout 60s godot --headless --path . -- --smoke
       - name: Updater download, rollback, corruption, and archive tests

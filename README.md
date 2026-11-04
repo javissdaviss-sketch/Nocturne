@@ -50,7 +50,7 @@ Use **Godot 4.6.3** (4.6 series recommended), import `project.godot`, then press
 godot --path .
 ```
 
-The carriages carry a shared Deco identity: mounted twelve-carriage directories and service plaques, patterned runners, walnut flooring, woven seating, travel luggage and reading shelves, laid dining settings, and botanical work supplies. Additional props include overhead luggage racks, a hat-and-umbrella stand, a tabletop radio, a travel chess set and reading lamp, a wheeled tea trolley, and a garden watering can, propagation rack, seedling tray, hose reel, and slatted crate. The crate has real slat gaps and a perchable rim. The six physical clues retain their original positions and inspection flow.
+The carriages carry a shared Deco identity: mounted twelve-carriage directories and service plaques, patterned runners, walnut flooring, woven seating, travel luggage and reading shelves, laid dining settings, and botanical work supplies. Additional props include overhead luggage racks, a hat-and-umbrella stand, a tabletop radio, a travel chess set and reading lamp, a wheeled tea trolley, and a garden watering can, propagation rack, seedling tray, hose reel, and slatted crate. Interior furniture, props, people, palm trunks and fronds now have collision that follows their visible geometry. Handles, rack openings and crate gaps remain open. Flight, walking, landing and takeoff use body sweeps; older saves embedded in formerly decorative props recover to nearby clear space. The six physical clues retain their original positions and inspection flow.
 
 The passing city uses layered parallax, housed neon signs with soft shader halos, rain on the sealed windows, exterior precipitation, and sparse lamplit dust. These effects run on the existing GL Compatibility renderer.
 
@@ -64,6 +64,8 @@ The mouse-look regression requires a graphical display (or Xvfb), because headle
 ```sh
 godot --headless --path . --editor --import --quit
 godot --headless --path . --script res://tests/test_case.gd
+godot --headless --path . --script res://tests/test_solid_geometry.gd
+XDG_DATA_HOME=/tmp/nocturne-solid-tests godot --headless --path . --script res://tests/test_solid_objects.gd
 godot --headless --path . --script res://tests/test_jump.gd
 XDG_DATA_HOME=/tmp/nocturne-atmosphere-tests godot --headless --path . --script res://tests/test_atmosphere.gd
 godot --headless --path . -- --smoke

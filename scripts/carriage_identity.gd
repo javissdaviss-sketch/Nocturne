@@ -1,5 +1,5 @@
 extends Node3D
-## Mounted Nocturne wayfinding and Deco panelling; decoration has no collisions.
+## Mounted Nocturne wayfinding and Deco panelling; world adds mesh collision.
 const GOLD := Color("c6a46c")
 const CREAM := Color("e0d3b7")
 const MUTED := Color("8a9d95")
@@ -57,6 +57,7 @@ func build() -> void:
   multi.transform_format = MultiMesh.TRANSFORM_3D
   multi.mesh = mesh
   multi.instance_count = transforms.size()
+  multi.set_meta("solid_geometry_transforms",transforms.duplicate())
   for i in range(transforms.size()): multi.set_instance_transform(i,transforms[i])
   var instance := MultiMeshInstance3D.new()
   instance.name = "NocturneFixtures_"+key

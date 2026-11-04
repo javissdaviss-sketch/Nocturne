@@ -5,6 +5,9 @@ const LEAF_TEXTURE = preload("res://assets/textures/palm_leaf_albedo.png")
 const TABLE_TEXTURE = preload("res://assets/textures/table_mahogany_albedo.png")
 const CABIN_FINISH = preload("res://shaders/cabin_surfaces.gdshader")
 const RUNNER_FINISH = preload("res://shaders/nocturne_runner.gdshader")
+const SolidGeometry = preload("res://scripts/solid_geometry.gd")
+var solid_geometry = SolidGeometry.new()
+var collision_stats: Dictionary = {}
 const CarriageIdentity = preload("res://scripts/carriage_identity.gd")
 const ResidentialProps = preload("res://scripts/residential_props.gd")
 const HospitalityProps = preload("res://scripts/hospitality_props.gd")
@@ -150,6 +153,7 @@ func _ready() -> void:
   add_child(props)
   props.build()
  make_hotspots()
+ collision_stats = solid_geometry.build(self,[scenery,rain_windows,atmosphere])
 
 func make_environment() -> void:
  var env := WorldEnvironment.new()
@@ -506,10 +510,11 @@ func conservatory() -> void:
   petal.rotation.z = a
  ball(Vector3(-100,124,2019),Vector3(3,3,3),Color("d5b365"))
 
-func human(p: Vector3, coat: Color, hair: Color, name_text: String) -> void:
+func human(p: Vector3, coat: Color, hair: Color, name_text: String, hotspot_id: String = "") -> void:
  var n := Node3D.new()
  add_child(n)
  n.position = p
+ n.set_meta("hotspot_id",hotspot_id)
  # Humans remain life-size; the fly is 6mm long.
  for x in [-9,9]:
   cyl(Vector3(x,36,0),7,62,Color("283139"),false,n)
@@ -527,9 +532,9 @@ func human(p: Vector3, coat: Color, hair: Color, name_text: String) -> void:
  badge.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 
 func people() -> void:
- human(Vector3(112,0,530),Color("697c80"),Color("292a2a"),"IVO / ENGINEERING")
- human(Vector3(113,0,1150),Color("863f54"),Color("242d30"),"MARA / HOSPITALITY")
- human(Vector3(112,0,2110),Color("a99068"),Color("b6b3a1"),"LIAN / BOTANY")
+ human(Vector3(112,0,530),Color("697c80"),Color("292a2a"),"IVO / ENGINEERING","engineer")
+ human(Vector3(113,0,1150),Color("863f54"),Color("242d30"),"MARA / HOSPITALITY","steward")
+ human(Vector3(112,0,2110),Color("a99068"),Color("b6b3a1"),"LIAN / BOTANY","botanist")
 
 func make_hotspots() -> void:
  for source in [Data.CLUES,Data.TALKS,Data.PROPS]:

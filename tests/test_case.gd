@@ -52,8 +52,8 @@ func run() -> void:
  # Continuous aisle across all three carriage boundaries.
  var query := PhysicsRayQueryParameters3D.create(Vector3(0,105,20),Vector3(0,105,2460),1)
  check(space.intersect_ray(query).is_empty(),"All three carriages connected by a clear aisle")
- # The tiny access duct must be clear even while the cabinet is locked.
- query = PhysicsRayQueryParameters3D.create(Vector3(65,11,1460),Vector3(104,11,1460),1)
+ # The access duct admits the fly above its physical cable while locked.
+ query = PhysicsRayQueryParameters3D.create(Vector3(65,12,1460),Vector3(102,12,1460),1)
  check(space.intersect_ray(query).is_empty(),"Cable duct actually admits the fly")
  query = PhysicsRayQueryParameters3D.create(Vector3(65,49,1460),Vector3(121,49,1460),1)
  check(not space.intersect_ray(query).is_empty(),"Cabinet door blocks bottle before release")
@@ -79,7 +79,7 @@ func run() -> void:
  collision = fly.move_and_collide(Vector3(20,0,0))
  check(collision!=null and fly.position.x<175,"Windows prevent escaping the train")
  # New prop: real gaps between garden-crate slats admit the 6 mm fly.
- query = PhysicsRayQueryParameters3D.create(Vector3(-154,10,2421),Vector3(-144,10,2421),1)
+ query = PhysicsRayQueryParameters3D.create(Vector3(-154,10,2421),Vector3(-146.5,10,2421),1)
  check(space.intersect_ray(query).is_empty(),"Garden crate has real gaps between slats")
  query = PhysicsRayQueryParameters3D.create(Vector3(-154,6,2421),Vector3(-144,6,2421),1)
  check(not space.intersect_ray(query).is_empty(),"Garden crate wooden slats are solid")

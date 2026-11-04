@@ -1,6 +1,6 @@
 extends Node3D
-## Non-interactive set dressing, grouped by primitive/material into MultiMeshes.
-## All coordinates are centimetres. Evidence, walkways and collisions are untouched.
+## Prop visuals grouped by primitive/material; world compiles physical collision.
+## All coordinates are centimetres. Preserve per-instance geometry for physics.
 const BRASS := Color("bda374")
 const CREAM := Color("ddd4bc")
 const TEAL := Color("2d625e")
@@ -24,6 +24,8 @@ func finish_batches() -> void:
   instances.transform_format = MultiMesh.TRANSFORM_3D
   instances.mesh = meshes[data.shape]
   instances.instance_count = data.transforms.size()
+  # Keep CPU geometry available even with Godot's headless dummy renderer.
+  instances.set_meta("solid_geometry_transforms",data.transforms.duplicate())
   for i in range(instances.instance_count):
    instances.set_instance_transform(i,data.transforms[i])
   var node := MultiMeshInstance3D.new()

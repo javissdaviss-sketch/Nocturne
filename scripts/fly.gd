@@ -11,6 +11,8 @@ var jumping := false
 var space_tap_remaining := 0.0
 var active := false
 var precision := false
+var body_collision: CollisionShape3D
+var restore_pending := false
 var camera: Camera3D
 var visual: Node3D
 var wing_l: MeshInstance3D
@@ -29,6 +31,7 @@ func _ready() -> void:
  floor_snap_length = 0.15
  safe_margin = 0.015
  var shape := CollisionShape3D.new()
+ body_collision = shape
  var sphere := SphereShape3D.new()
  sphere.radius = 0.16
  shape.shape = sphere
@@ -121,6 +124,9 @@ func _input(event: InputEvent) -> void:
    else: distance = clamp(distance*factor,2.5,170)
 
 func _physics_process(delta: float) -> void:
+ if restore_pending:
+  restore_pending = false
+  resolve_restored_position()
  clock += delta
  if active and not inspection:
   space_tap_remaining = maxf(0.0, space_tap_remaining - delta)
@@ -179,6 +185,39 @@ func clear_camera(from: Vector3, to: Vector3) -> Vector3:
  if hit: return hit.position+hit.normal*0.2
  return to
 
+func position_is_clear(point: Vector3) -> bool:
+ var query := PhysicsShapeQueryParameters3D.new()
+ query.shape = body_collision.shape
+ query.transform = Transform3D(global_basis,point)
+ query.collision_mask = 1
+ query.exclude = [get_rid()]
+ query.margin = 0.001
+ return get_world_3d().direct_space_state.intersect_shape(query,1).is_empty()
+
+func restore_position(point: Vector3) -> void:
+ global_position = point
+ safe_position = point
+ reset_movement()
+ # Resolve after the new world's bodies have entered the physics space.
+ restore_pending = true
+
+func resolve_restored_position() -> void:
+ if position_is_clear(global_position): return
+ var preferred := global_position
+ var directions := [Vector3.UP,Vector3.RIGHT,Vector3.LEFT,Vector3.FORWARD,Vector3.BACK,
+  Vector3(1,1,0).normalized(),Vector3(-1,1,0).normalized(),Vector3(0,1,1).normalized(),Vector3(0,1,-1).normalized()]
+ for distance_from_save in [0.5,1.0,2.0,4.0,8.0,16.0,32.0,64.0]:
+  for direction in directions:
+   var candidate: Vector3 = preferred+direction*distance_from_save
+   if abs(candidate.x)>=169 or candidate.y<=1 or candidate.y>=285 or candidate.z<=0 or candidate.z>=2480: continue
+   if position_is_clear(candidate):
+    global_position = candidate
+    safe_position = candidate
+    return
+ # The existing safe-perch location is clear of the investigation props.
+ global_position = Vector3(-75,88,1225)
+ safe_position = global_position
+
 func press_space() -> void:
  if space_tap_remaining > 0.0 and (jumping or landed):
   take_off()
@@ -192,7 +231,8 @@ func take_off() -> void:
  landed = false
  jumping = false
  space_tap_remaining = 0.0
- position.y += 0.6
+ # Sweep the body upward; taking off under a thin shelf must not teleport through.
+ move_and_collide(Vector3.UP*0.6)
  velocity.y = maxf(velocity.y, 12.0)
 
 func reset_movement() -> void:
@@ -205,10 +245,11 @@ func try_land() -> bool:
  if landed:
   take_off()
   return true
- var query := PhysicsRayQueryParameters3D.create(position,position-Vector3(0,18,0),1)
- var hit := get_world_3d().direct_space_state.intersect_ray(query)
- if hit and hit.normal.y > 0.8:
-  position = hit.position+Vector3(0,0.19,0)
+ # Test the whole fly rather than a center ray, then sweep down to the surface.
+ # This also prevents snapping through an obstruction beside a narrow opening.
+ var landing := KinematicCollision3D.new()
+ if test_move(global_transform,Vector3.DOWN*18.0,landing,safe_margin) and landing.get_normal().y > 0.8:
+  move_and_collide(Vector3.DOWN*18.0)
   velocity = Vector3.ZERO
   landed = true
   jumping = false
