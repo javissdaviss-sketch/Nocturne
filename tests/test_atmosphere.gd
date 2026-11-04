@@ -42,7 +42,7 @@ func run() -> void:
   var sideways_travel: float = sin(deg_to_rad(emitter.spread))*emitter.initial_velocity_max*emitter.lifetime
   sideways_travel += abs(emitter.gravity.x)*emitter.lifetime*emitter.lifetime*0.5
   var nearest_x: float = abs(emitter.global_position.x)-emitter.emission_box_extents.x-sideways_travel
-  check(nearest_x > 175.0,"Exterior rain cannot enter the sealed cabin at maximum spread")
+  check(nearest_x > 515.0,"Exterior rain cannot enter the sealed cabin at maximum spread")
  game.show_settings()
  var toggle := find_text(game,"Rain & atmosphere") as CheckBox
  check(toggle != null,"Atmosphere toggle is reachable in settings")

@@ -26,4 +26,4 @@ func add_carriage(index: int) -> void:
   pane.material_override = glass_material
   pane.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
   add_child(pane)
-  pane.position = Vector3(side*173,0,float(index)*840.0+400.0)
+  pane.position = Vector3(side*513,0,float(index)*840.0+400.0)

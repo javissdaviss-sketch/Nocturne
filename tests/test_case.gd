@@ -52,6 +52,30 @@ func run() -> void:
  # Continuous aisle across all three carriage boundaries.
  var query := PhysicsRayQueryParameters3D.create(Vector3(0,105,20),Vector3(0,105,2460),1)
  check(space.intersect_ray(query).is_empty(),"All three carriages connected by a clear aisle")
+ # Every compartment has a physical wall, open portal and a full-width floor.
+ var layout := world.get_node("CompartmentLayout")
+ check(layout.rooms.size()==14,"Fourteen enclosed rooms across three carriages")
+ for room in layout.rooms:
+  var side: int = room.side
+  var entry: float = room.entry
+  query = PhysicsRayQueryParameters3D.create(Vector3(0,105,entry),Vector3(side*75,105,entry),1)
+  check(space.intersect_ray(query).is_empty(),"Room doorway connects to corridor: "+str(room))
+  var wall_z: float = room.lo+8
+  query = PhysicsRayQueryParameters3D.create(Vector3(0,150,wall_z),Vector3(side*70,150,wall_z),1)
+  check(not space.intersect_ray(query).is_empty(),"Room wall blocks flight outside doorway")
+  query = PhysicsRayQueryParameters3D.create(Vector3(side*300,10,entry),Vector3(side*300,-10,entry),1)
+  check(not space.intersect_ray(query).is_empty(),"Expanded room has a solid floor")
+ # A save from an outer room remains valid after restarting.
+ s.saved_position = [300.0,120.0,200.0]
+ s.save_to("user://test-case.json")
+ restored = State.new()
+ restored.load_from("user://test-case.json")
+ check(restored.saved_position==[300.0,120.0,200.0],"Expanded-room save positions survive reload")
+ fly.position = Vector3(300,180,200)
+ fly.active = true
+ fly._physics_process(0.0)
+ fly.active = false
+ check(fly.position.x>290,"Flight controller accepts the expanded room width")
  # The access duct admits the fly above its physical cable while locked.
  query = PhysicsRayQueryParameters3D.create(Vector3(65,12,1460),Vector3(102,12,1460),1)
  check(space.intersect_ray(query).is_empty(),"Cable duct actually admits the fly")
@@ -75,9 +99,9 @@ func run() -> void:
  fly.position = Vector3(-76,85,1240)
  check(fly.try_land() and fly.landed,"Fly lands on the tabletop")
  check(fly.try_land() and not fly.landed,"Fly takes off from landing")
- fly.position = Vector3(169,110,1200)
+ fly.position = Vector3(509,110,1200)
  collision = fly.move_and_collide(Vector3(20,0,0))
- check(collision!=null and fly.position.x<175,"Windows prevent escaping the train")
+ check(collision!=null and fly.position.x<515,"Windows prevent escaping the train")
  # New prop: real gaps between garden-crate slats admit the 6 mm fly.
  query = PhysicsRayQueryParameters3D.create(Vector3(-154,10,2421),Vector3(-146.5,10,2421),1)
  check(space.intersect_ray(query).is_empty(),"Garden crate has real gaps between slats")

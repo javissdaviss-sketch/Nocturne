@@ -43,7 +43,7 @@ func build() -> void:
    for side in [-1,1]:
     for i in range(5):
      var depth := 100.0 + layer_index*35.0
-     var distance := 475.0 + layer_index*410.0 + rng.randf_range(0,120)
+     var distance := 815.0 + layer_index*410.0 + rng.randf_range(0,120)
      var width := rng.randf_range(180,280)
      var height := rng.randf_range(340,850) + layer_index*120.0
      var z := section*PERIOD + i*336 + rng.randf_range(-24,24)

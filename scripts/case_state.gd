@@ -42,7 +42,7 @@ func load_from(path: String = PATH) -> bool:
  var p: Variant = parsed.get("position",[])
  if p is Array and p.size()==3:
   if (p[0] is float or p[0] is int) and (p[1] is float or p[1] is int) and (p[2] is float or p[2] is int):
-   if abs(p[0])<170 and p[1]>1 and p[1]<285 and p[2]>0 and p[2]<2480: saved_position = p
+   if abs(p[0])<510 and p[1]>1 and p[1]<285 and p[2]>0 and p[2]<2480: saved_position = p
  # Locked clues may never leak from an inconsistent save.
  if not cabinet_open: found.erase("chemical")
  if not dispatch_open: found.erase("ledger")

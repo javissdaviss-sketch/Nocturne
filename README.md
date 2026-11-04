@@ -87,3 +87,9 @@ Three playable carriages; the other nine are established by the setting and lock
 ## Credits and notices
 
 Original story, geometry, UI, and synthesized audio created for this project. No Agatha Christie characters or plots are used. Godot is distributed under the MIT license. The two bundled fonts are DejaVu Serif and DejaVu Sans, renamed for project use; their license is included in `THIRD_PARTY_NOTICES.txt`.
+
+## Compartment train expansion
+
+The three investigation carriages are now 10.2 m wide (three times their original 3.4 m), with a continuous 1.1 m central corridor and fourteen rooms behind full-height partitions. Retracted sliding doors provide open physical entrances. Residential suites have beds, wardrobes and sitting areas; hospitality has reception, private dining and service rooms; the winter garden has propagation and archive compartments. Steel bulkheads, exposed overhead utilities and brass wayfinding take inspiration from Snowpiercer while retaining Nocturne's night-train setting.
+
+Furniture and the 6 mm fly keep their original scale. The six clues, conversations, cabinet duct and symbol puzzle stay in place. Window glass, outside rain, city clearance, flight recovery limits and saved-position validation follow the expanded width.

@@ -19,7 +19,7 @@ func _ready() -> void:
    rain.lifetime = 1.5
    rain.preprocess = 1.5
    rain.mesh = rain_mesh
-   rain.position = Vector3(side*475,520,car*840+400)
+   rain.position = Vector3(side*815,520,car*840+400)
    rain.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
    rain.emission_box_extents = Vector3(190,15,415)
    rain.direction = Vector3(0,-1,0.12).normalized()

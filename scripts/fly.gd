@@ -158,7 +158,7 @@ func _physics_process(delta: float) -> void:
    # Walking off a surface falls naturally and lands on the next one.
    landed = false
    jumping = true
-  if position.y < 0 or abs(position.x)>176 or position.z < 0 or position.z > 2480:
+  if position.y < 0 or abs(position.x)>516 or position.z < 0 or position.z > 2480:
    position = safe_position
    reset_movement()
   if position.y > 2 and position.y < 285: safe_position = position

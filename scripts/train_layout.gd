@@ -1,0 +1,99 @@
+extends Node3D
+## Full-height compartments inside a 10.2 m megatrain. Original evidence stays in place.
+const HALF_WIDTH := 510.0
+const CORRIDOR_EDGE := 55.0
+var rooms: Array[Dictionary] = []
+var doorways: Array[Vector3] = []
+const STEEL := Color("293d41")
+const BRASS := Color("b6925e")
+const WARM := Color("d9cbb0")
+
+func build(w: Node3D) -> void:
+ name = "CompartmentLayout"
+ var divisions := [[0.0,360.0,800.0],[840.0,990.0,1390.0,1640.0],[1680.0,2045.0,2480.0]]
+ var titles := [
+  ["06 A / SLEEPER SUITE", "06 B / ENGINEERING QUARTERS"],
+  ["07 A / RECEPTION", "07 B / PRIVATE DINING", "07 C / GALLEY & SERVICE"],
+  ["08 A / PROPAGATION LAB", "08 B / SEED ARCHIVE"]]
+ for car in range(3):
+  var bounds: Array = divisions[car]
+  for side in [-1,1]:
+   for i in range(bounds.size()-1):
+    var lo: float = bounds[i]
+    var hi: float = bounds[i+1]
+    var entry: float = (lo+hi)*0.5
+    # The dining entry avoids the occupied chair backs near the cup.
+    if car == 1 and i == 1: entry = 1125.0
+    rooms.append({"car":car,"side":side,"lo":lo,"hi":hi,"entry":entry})
+    doorways.append(Vector3(side*CORRIDOR_EDGE,105,entry))
+    compartment(w,car,side,lo,hi,entry,titles[car][i])
+   for i in range(1,bounds.size()-1):
+    var z: float = bounds[i]
+    w.box(Vector3(side*282.5,148,z),Vector3(455,296,5),STEEL,true,self)
+    for x in [190,360,490]:
+     w.box(Vector3(side*x,148,z-3),Vector3(3,290,2),BRASS,true,self,0.6)
+  # Exposed overhead utility pipes reinforce the working megatrain structure.
+  for x in [-38,38]:
+   w.line(Vector3(x,278,car*840+14),Vector3(x,278,car*840+786),2.5,STEEL,self)
+   for z in range(50,790,120):
+    w.box(Vector3(x,278,car*840+z),Vector3(9,9,3),BRASS,true,self,0.7)
+
+func compartment(w: Node3D, car: int, side: int, lo: float, hi: float, entry: float, title: String) -> void:
+ var x := side*CORRIDOR_EDGE
+ var finish := Color("485258") if car == 0 else Color("35534a")
+ if car == 1: finish = Color("59433b")
+ # Solid wall sections and lintel leave a real 92 cm wide, 222 cm high door.
+ for span in [Vector2(lo,entry-46),Vector2(entry+46,hi)]:
+  w.box(Vector3(x,148,(span.x+span.y)*0.5),Vector3(5,296,span.y-span.x),finish,true,self).material_override = w.cabin_finish(2,finish)
+ w.box(Vector3(x,259,entry),Vector3(5,74,92),STEEL,true,self)
+ for dz in [-47,47]:
+  w.box(Vector3(x,112,entry+dz),Vector3(9,224,3),BRASS,true,self,0.65)
+ w.box(Vector3(x,223,entry),Vector3(9,3,98),BRASS,true,self,0.65)
+ # Parked sliding leaf, visibly retracted beside the open portal.
+ w.box(Vector3(x+side*5,108,entry+79),Vector3(3,211,54),STEEL,true,self)
+ for h in [18,194]:
+  w.box(Vector3(x-side*3,h,(lo+hi)*0.5),Vector3(1,2,hi-lo),BRASS,true,self,0.6)
+ var plaque: Label3D = w.sign_text(title,Vector3(x-side*5,251,entry),0.10,WARM,self)
+ plaque.rotation.y = -side*PI/2
+ w.box(Vector3(x-side*4,251,entry),Vector3(1,22,104),STEEL,true,self)
+ w.light_at(Vector3(side*250,241,(lo+hi)*0.5),Color("ffd9a1") if car != 2 else Color("badfc8"),1.5,330)
+ # Outer-room floor insets make the wider volume legible without scaling props.
+ w.box(Vector3(side*332,0.8,(lo+hi)*0.5),Vector3(300,1,hi-lo-18),Color("283a38") if car != 1 else Color("533b35"),true,self)
+ if car == 0:
+  sleeper(w,side,lo,hi)
+ elif car == 1:
+  hospitality(w,side,lo,hi)
+ else:
+  nursery(w,side,lo,hi)
+
+func sleeper(w: Node3D, side: int, lo: float, hi: float) -> void:
+ var z := (lo+hi)*0.5
+ # Human-sized bed, fitted storage, reading light and a private sitting area.
+ w.box(Vector3(side*415,24,z),Vector3(135,48,205),STEEL,true,self)
+ w.box(Vector3(side*415,54,z),Vector3(132,14,200),WARM,true,self)
+ w.box(Vector3(side*415,64,z+22),Vector3(134,7,149),Color("4b7372"),true,self).material_override = w.cabin_finish(1,Color("4b7372"))
+ w.box(Vector3(side*415,66,z-76),Vector3(85,13,34),Color("eee2ca"),true,self)
+ w.box(Vector3(side*415,58,z-105),Vector3(141,116,6),STEEL,true,self)
+ w.box(Vector3(side*230,112,hi-30),Vector3(95,224,48),Color("50483e"),true,self)
+ for dx in [-23,23]: w.box(Vector3(side*230+dx,110,hi-55),Vector3(2,15,2),BRASS,true,self)
+ w.table(Vector3(side*242,0,lo+75),75,65)
+ w.seat(Vector3(side*242,0,lo+145),Color("635d66"))
+
+func hospitality(w: Node3D, side: int, lo: float, hi: float) -> void:
+ var length := hi-lo
+ if length > 300:
+  for z in [lo+100,hi-100]:
+   w.table(Vector3(side*345,0,z),150,80)
+   for dx in [-44,44]: w.seat(Vector3(side*345+dx,0,z+72),Color("623f45"))
+ else:
+  w.box(Vector3(side*410,45,(lo+hi)*0.5),Vector3(135,90,length-30),STEEL,true,self)
+  w.box(Vector3(side*410,93,(lo+hi)*0.5),Vector3(140,6,length-24),WARM,true,self)
+  for z in range(int(lo+28),int(hi-12),45):
+   w.box(Vector3(side*410,163,z),Vector3(125,6,30),Color("627b73"),true,self)
+
+func nursery(w: Node3D, side: int, lo: float, hi: float) -> void:
+ for z in [lo+65,(lo+hi)*0.5,hi-65]:
+  w.box(Vector3(side*377,32,z),Vector3(200,64,62),STEEL,true,self)
+  w.box(Vector3(side*377,65,z),Vector3(192,3,54),Color("302f26"),true,self)
+  for dx in [-60,0,60]: w.plant(Vector3(side*377+dx,67,z),110,25)
+ w.box(Vector3(side*270,244,(lo+hi)*0.5),Vector3(6,4,hi-lo-25),Color("c4e1c7"),true,self,0,1.2)

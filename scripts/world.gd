@@ -15,6 +15,7 @@ const GardenProps = preload("res://scripts/garden_props.gd")
 const LivedInDetails = preload("res://scripts/lived_in_details.gd")
 const Exterior = preload("res://scripts/exterior.gd")
 const RainWindows = preload("res://scripts/rain_windows.gd")
+const TrainLayout = preload("res://scripts/train_layout.gd")
 const Atmosphere = preload("res://scripts/atmosphere.gd")
 var rain_windows: Node3D
 var atmosphere: Node3D
@@ -152,6 +153,9 @@ func _ready() -> void:
   var props: Node3D = prop_script.new()
   add_child(props)
   props.build()
+ var rooms := TrainLayout.new()
+ add_child(rooms)
+ rooms.build(self)
  make_hotspots()
  collision_stats = solid_geometry.build(self,[scenery,rain_windows,atmosphere])
 
@@ -195,18 +199,18 @@ func set_atmosphere_enabled(enabled: bool) -> void:
 func carriage(index: int) -> void:
  var z := float(index)*840.0
  var shade := Color("243d39") if index != 1 else Color("233f44")
- box(Vector3(0,-5,z+400),Vector3(340,10,800),WOOD).material_override = cabin_finish(0,Color("66503c"))
- for x in range(-160,161,20):
+ box(Vector3(0,-5,z+400),Vector3(1020,10,800),WOOD).material_override = cabin_finish(0,Color("66503c"))
+ for x in range(-500,501,20):
   box(Vector3(x,0.15,z+400),Vector3(0.65,0.3,800),Color("866a4b"),false)
  for j in range(12):
-  box(Vector3(0,0.25,z+j*68+10),Vector3(340,0.25,0.5),Color("241f1e"),false)
+  box(Vector3(0,0.25,z+j*68+10),Vector3(1020,0.25,0.5),Color("241f1e"),false)
  box(Vector3(0,0.8,z+400),Vector3(110,1.2,780),Color.WHITE).material_override = runner_finish(index)
  for side in [-1,1]:
   box(Vector3(side*58,1.5,z+400),Vector3(1,0.4,780),GOLD,false)
-  box(Vector3(side*171,45,z+400),Vector3(7,90,800),shade).material_override = cabin_finish(2,shade)
-  box(Vector3(side*171,273,z+400),Vector3(7,44,800),shade)
-  box(Vector3(side*167,94,z+400),Vector3(3,3,800),GOLD,false, self,0.6)
-  box(Vector3(side*167,249,z+400),Vector3(3,3,800),GOLD,false, self,0.6)
+  box(Vector3(side*511,45,z+400),Vector3(7,90,800),shade).material_override = cabin_finish(2,shade)
+  box(Vector3(side*511,273,z+400),Vector3(7,44,800),shade)
+  box(Vector3(side*507,94,z+400),Vector3(3,3,800),GOLD,false, self,0.6)
+  box(Vector3(side*507,249,z+400),Vector3(3,3,800),GOLD,false, self,0.6)
   # Invisible window collision: clear views, sealed train.
   var wall := StaticBody3D.new()
   var shape := CollisionShape3D.new()
@@ -215,19 +219,19 @@ func carriage(index: int) -> void:
   shape.shape = cube
   add_child(wall)
   wall.add_child(shape)
-  wall.position = Vector3(side*174,174,z+400)
+  wall.position = Vector3(side*514,174,z+400)
   for j in range(5):
    var pz := z+40+j*170
-   box(Vector3(side*168,173,pz),Vector3(10,155,8),GOLD, true,self,0.65)
-   box(Vector3(side*166,170,pz+84),Vector3(2,2,158),GOLD,false)
+   box(Vector3(side*508,173,pz),Vector3(10,155,8),GOLD, true,self,0.65)
+   box(Vector3(side*506,170,pz+84),Vector3(2,2,158),GOLD,false)
   for j in [120,450,700]:
-   var p := Vector3(side*157,216,z+j)
+   var p := Vector3(side*497,216,z+j)
    box(p,Vector3(7,25,12),GOLD,false,self,0.65)
    ball(p+Vector3(-side*5,0,0),Vector3(14,21,14),Color("ffe3a5"),self,1.5)
    light_at(p+Vector3(-side*15,0,0),Color("ffd69e"),1.4,220)
  for j in [0,800]:
-  box(Vector3(-112,144,z+j),Vector3(116,290,10),shade)
-  box(Vector3(112,144,z+j),Vector3(116,290,10),shade)
+  box(Vector3(-282,144,z+j),Vector3(456,290,10),shade)
+  box(Vector3(282,144,z+j),Vector3(456,290,10),shade)
   box(Vector3(0,258,z+j),Vector3(110,74,10),shade)
   for side in [-1,1]: box(Vector3(side*56,113,z+j-7),Vector3(3,226,5),GOLD,false,self,0.7)
   box(Vector3(0,224,z+j-7),Vector3(115,3,5),GOLD,false,self,0.7)
@@ -237,16 +241,16 @@ func carriage(index: int) -> void:
   box(Vector3(0,233,z+820),Vector3(120,6,40),Color("283a3b"))
  if index == 0: box(Vector3(0,110,-4),Vector3(108,220,8),Color("1a3337"))
  if index == 2: box(Vector3(0,110,z+804),Vector3(108,220,8),Color("1a3337"))
- if index != 2: box(Vector3(0,297,z+400),Vector3(340,6,800),Color("253733"))
+ if index != 2: box(Vector3(0,297,z+400),Vector3(1020,6,800),Color("253733"))
  else:
-  box(Vector3(0,297,z+400),Vector3(340,6,800),Color("233e43"))
+  box(Vector3(0,297,z+400),Vector3(1020,6,800),Color("233e43"))
  for j in range(7):
   var rz := z+35+j*121
   for side in [-1,1]:
-   box(Vector3(side*147,263,rz),Vector3(35,3,4),GOLD,false)
-   var rib := box(Vector3(side*118,279,rz),Vector3(36,3,4),GOLD,false)
+   box(Vector3(side*487,263,rz),Vector3(35,3,4),GOLD,false)
+   var rib := box(Vector3(side*458,279,rz),Vector3(36,3,4),GOLD,false)
    rib.rotation.z = side*0.48
-  box(Vector3(0,287,rz),Vector3(209,3,4),GOLD,false)
+  box(Vector3(0,287,rz),Vector3(889,3,4),GOLD,false)
  for side in [-1,1]: box(Vector3(side*78,291,z+400),Vector3(2,2,780),Color("e2bf89"),false,self,0,1.3)
  if index == 0: sign_text("05  ←   RESIDENT ACCESS ONLY",Vector3(0,160,2),0.25,GOLD)
  if index == 2: sign_text("09  →   RESIDENT ACCESS ONLY",Vector3(0,160,z+797),0.25,GOLD)
