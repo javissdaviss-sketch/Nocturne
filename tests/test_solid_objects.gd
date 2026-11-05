@@ -138,6 +138,7 @@ func run() -> void:
  blocked("Garden crate slat",Vector3(-154,6,2421),Vector3(7.5,0,0))
  clear_gap("Open service cable duct above its cable",Vector3(65,12,1460),Vector3(37,0,0))
  check(fly.position.distance_to(Vector3(104,11,1460))<5.0,"Duct route reaches the latch within interaction distance")
+ blocked("Fixed service cabinet front beside the puzzle door",Vector3(65,50,1521),Vector3(30,0,0))
  # Exercise the real flight controller at full speed against a narrow trolley leg.
  place(Vector3(95,55,985))
  fly.yaw = 0.0

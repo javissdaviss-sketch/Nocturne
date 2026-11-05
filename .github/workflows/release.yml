@@ -21,7 +21,7 @@ jobs:
   verify:
     name: Game and updater regression tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -34,36 +34,46 @@ jobs:
           use-dotnet: false
           include-templates: false
       - name: Install graphical test dependencies
-        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 mesa-vulkan-drivers libvulkan1
       - name: Import game
         run: godot --headless --path . --editor --import --quit
       - name: Evidence, collision, and save tests
-        run: timeout 60s godot --headless --path . --script res://tests/test_case.gd
+        run: timeout 180s godot --headless --path . --script res://tests/test_case.gd
       - name: Solid geometry transforms and prop collision regression
         env:
           XDG_DATA_HOME: ${{ runner.temp }}/nocturne-solid-tests
         run: |
           timeout 60s godot --headless --path . --script res://tests/test_solid_geometry.gd
-          timeout 90s godot --headless --path . --script res://tests/test_solid_objects.gd
+          timeout 60s godot --headless --path . --script res://tests/test_render_batches.gd
+          timeout 240s godot --headless --path . --script res://tests/test_solid_objects.gd
       - name: Jump and double-tap takeoff regression
         run: timeout 60s godot --headless --path . --script res://tests/test_jump.gd
       - name: Atmosphere controls and rain containment
         env:
           XDG_DATA_HOME: ${{ runner.temp }}/nocturne-atmosphere-tests
-        run: timeout 60s godot --headless --path . --script res://tests/test_atmosphere.gd
+        run: timeout 180s godot --headless --path . --script res://tests/test_atmosphere.gd
       - name: Mouse look through HUD regression
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           LP_NUM_THREADS: '4'
-        run: timeout 180s xvfb-run -a godot --path . --audio-driver Dummy --script res://tests/test_mouse.gd
+        run: timeout 240s xvfb-run -a godot --path . --rendering-method gl_compatibility --disable-render-loop --fixed-fps 60 --audio-driver Dummy --script res://tests/test_mouse.gd
       - name: Graphical object collision and movement regression
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           LP_NUM_THREADS: '4'
           XDG_DATA_HOME: ${{ runner.temp }}/nocturne-solid-graphical-tests
-        run: timeout 180s xvfb-run -a godot --path . --audio-driver Dummy --script res://tests/test_solid_objects.gd
+        run: timeout 360s xvfb-run -a godot --path . --rendering-method gl_compatibility --disable-render-loop --fixed-fps 60 --audio-driver Dummy --script res://tests/test_solid_objects.gd
+      - name: Forward+ realism rendering validation
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          LP_NUM_THREADS: '4'
+          XDG_DATA_HOME: ${{ runner.temp }}/nocturne-render-tests
+        run: |
+          set -o pipefail
+          timeout 720s xvfb-run -a godot --path . --rendering-method forward_plus --rendering-driver vulkan --audio-driver Dummy --script res://tests/test_rendering.gd 2>&1 | tee "$RUNNER_TEMP/render-validation.log"
+          ! grep -E 'SCRIPT ERROR|SHADER ERROR|ERROR:' "$RUNNER_TEMP/render-validation.log"
       - name: Complete investigation integration
-        run: timeout 60s godot --headless --path . -- --smoke
+        run: timeout 180s godot --headless --path . -- --smoke
       - name: Updater download, rollback, corruption, and archive tests
         working-directory: launcher
         run: go test -race -v ./...

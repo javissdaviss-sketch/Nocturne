@@ -56,7 +56,7 @@ func compartment(w: Node3D, car: int, side: int, lo: float, hi: float, entry: fl
  var plaque: Label3D = w.sign_text(title,Vector3(x-side*5,251,entry),0.10,WARM,self)
  plaque.rotation.y = -side*PI/2
  w.box(Vector3(x-side*4,251,entry),Vector3(1,22,104),STEEL,true,self)
- w.light_at(Vector3(side*250,241,(lo+hi)*0.5),Color("ffd9a1") if car != 2 else Color("badfc8"),1.5,330)
+ w.light_at(Vector3(side*250,241,(lo+hi)*0.5),Color("ffd9a1") if car != 2 else Color("badfc8"),0.65,280)
  # Outer-room floor insets make the wider volume legible without scaling props.
  w.box(Vector3(side*332,0.8,(lo+hi)*0.5),Vector3(300,1,hi-lo-18),Color.WHITE,true,self).material_override = w.runner_finish(car)
  if car == 0:
@@ -68,14 +68,8 @@ func compartment(w: Node3D, car: int, side: int, lo: float, hi: float, entry: fl
 
 func sleeper(w: Node3D, side: int, lo: float, hi: float) -> void:
  var z := (lo+hi)*0.5
- # Human-sized bed, fitted storage, reading light and a private sitting area.
- w.box(Vector3(side*415,24,z),Vector3(135,48,205),Color("493025"),true,self).material_override = w.cabin_finish(2,Color("63412e"))
- w.cushion(Vector3(side*415,54,z),Vector3(132,14,200),WARM,3,self)
- w.box(Vector3(side*415,64,z+22),Vector3(134,7,149),Color("204d49"),true,self).material_override = w.cabin_finish(1,Color("204d49"))
- for dx in [-28,28]: w.cushion(Vector3(side*415+dx,66,z-76),Vector3(51,13,34),Color("eee2ca"),4,self)
- w.box(Vector3(side*415,58,z-105),Vector3(141,116,6),Color("493025"),true,self).material_override = w.cabin_finish(2,Color("63412e"))
- w.box(Vector3(side*230,112,hi-30),Vector3(95,224,48),Color("493025"),true,self).material_override = w.cabin_finish(2,Color("63412e"))
- for dx in [-23,23]: w.box(Vector3(side*230+dx,110,hi-55),Vector3(2,15,2),BRASS,true,self)
+ preload("res://scripts/sleeping_assets.gd").build_bed(w,self,Vector3(side*415,0,z))
+ preload("res://scripts/cabinet_assets.gd").wardrobe(w,self,Vector3(side*230,0,hi-30))
  w.table(Vector3(side*242,0,lo+75),75,65)
  w.seat(Vector3(side*242,0,lo+145),Color("204d49"))
 
@@ -86,14 +80,16 @@ func hospitality(w: Node3D, side: int, lo: float, hi: float) -> void:
    w.table(Vector3(side*345,0,z),150,80)
    for dx in [-44,44]: w.seat(Vector3(side*345+dx,0,z+72),Color("623f45"))
  else:
-  w.box(Vector3(side*410,45,(lo+hi)*0.5),Vector3(135,90,length-30),STEEL,true,self)
-  w.box(Vector3(side*410,93,(lo+hi)*0.5),Vector3(140,6,length-24),WARM,true,self)
-  for z in range(int(lo+28),int(hi-12),45):
-   w.box(Vector3(side*410,163,z),Vector3(125,6,30),Color("627b73"),true,self)
+  preload("res://scripts/cabinet_assets.gd").service_counter(w,self,Vector3(side*410,0,(lo+hi)*0.5),length-30,side)
 
 func nursery(w: Node3D, side: int, lo: float, hi: float) -> void:
  for z in [lo+65,(lo+hi)*0.5,hi-65]:
-  w.box(Vector3(side*377,32,z),Vector3(200,64,62),STEEL,true,self)
-  w.box(Vector3(side*377,65,z),Vector3(192,3,54),Color("302f26"),true,self)
-  for dx in [-60,0,60]: w.plant(Vector3(side*377+dx,67,z),110,25)
- w.box(Vector3(side*270,244,(lo+hi)*0.5),Vector3(6,4,hi-lo-25),Color("c4e1c7"),true,self,0,1.2)
+  var planter := preload("res://scripts/garden_fixture_geometry.gd").new()
+  add_child(planter)
+  planter.build_planter(Vector3(side*377,0,z),Vector3(200,64,62))
+ var collection := preload("res://scripts/botanical_collection.gd").new()
+ add_child(collection)
+ collection.populate(side,lo,hi)
+ w.box(Vector3(side*270,246,(lo+hi)*0.5),Vector3(10,4,hi-lo-25),Color("233c35"),true,self,0.4)
+ for dx in [-4,4]: w.box(Vector3(side*270+dx,243.5,(lo+hi)*0.5),Vector3(1.3,3,hi-lo-25),BRASS,true,self,0.6)
+ w.box(Vector3(side*270,243.5,(lo+hi)*0.5),Vector3(5,1.6,hi-lo-31),Color("b7c9a3"),true,self,0,0.35)

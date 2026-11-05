@@ -11,3 +11,6 @@
 - Verify actual GitHub access, CI results, and release publication before claiming a fix is deployed. Report connection failures honestly; do not put credentials in the repository or launcher.
 
 - Interior MeshInstance and MultiMesh visuals receive physics through `scripts/solid_geometry.gd`; retain CPU `solid_geometry_transforms` on render batches for headless physics. Keep true holes, cable access and puzzle collider enable/disable working. Exclude weather, city scenery, UI and particles from solid geometry.
+
+- High-quality rendering now defaults to Forward+. Run `tests/test_rendering.gd` on a real Vulkan display (lavapipe is valid for correctness), in addition to the existing GL Compatibility input/physics checks. Tune lighting distances in centimetres. Room-key shadows must obey the saved Shadows preference.
+- Static rendering changes also run `tests/test_render_batches.gd`. Preserve authored mesh geometry, shadow settings, child labels, transparent sorting and puzzle exclusions. Validate actual rendered output after batching changes.

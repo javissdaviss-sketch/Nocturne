@@ -3,6 +3,7 @@ extends Node3D
 const Data = preload("res://scripts/case_data.gd")
 const LEAF_TEXTURE = preload("res://assets/textures/palm_leaf_albedo.png")
 const TABLE_TEXTURE = preload("res://assets/textures/table_mahogany_albedo.png")
+const BROCADE_TEXTURE = preload("res://assets/textures/botanical_brocade_albedo.png")
 const CABIN_FINISH = preload("res://shaders/cabin_surfaces.gdshader")
 const RUNNER_FINISH = preload("res://shaders/nocturne_runner.gdshader")
 const SolidGeometry = preload("res://scripts/solid_geometry.gd")
@@ -19,6 +20,8 @@ const TrainLayout = preload("res://scripts/train_layout.gd")
 const Atmosphere = preload("res://scripts/atmosphere.gd")
 const CyberLuxe = preload("res://scripts/cyber_luxe.gd")
 const InteriorBatches = preload("res://scripts/interior_batches.gd")
+const CeramicProfiles = preload("res://scripts/ceramic_profiles.gd")
+const HeroAssets = preload("res://scripts/hero_assets.gd")
 var rain_windows: Node3D
 var atmosphere: Node3D
 var environment: Environment
@@ -42,7 +45,11 @@ func mat(c: Color, metal: float = 0.0, glow: float = 0.0) -> StandardMaterial3D:
  var m := StandardMaterial3D.new()
  m.albedo_color = c
  m.metallic = metal
- m.roughness = 0.55 if metal == 0 else 0.3
+ m.roughness = 0.52 if metal == 0 else 0.28
+ if c == CREAM:
+  m.roughness = 0.22
+  m.clearcoat_enabled = true
+  m.clearcoat = 0.35
  if glow > 0:
   m.emission_enabled = true
   m.emission = c
@@ -57,6 +64,8 @@ func cabin_finish(kind: int, color: Color) -> ShaderMaterial:
  material.shader = CABIN_FINISH
  material.set_shader_parameter("finish",kind)
  material.set_shader_parameter("finish_color",color)
+ if kind == 2: material.set_shader_parameter("wood_texture",TABLE_TEXTURE)
+ if kind == 3: material.set_shader_parameter("brocade_texture",BROCADE_TEXTURE)
  materials[key] = material
  return material
 
@@ -88,73 +97,27 @@ func ball(p: Vector3, size: Vector3, c: Color, parent: Node3D = self, glow: floa
  var m := SphereMesh.new()
  m.radius = 1.0
  m.height = 2.0
- m.radial_segments = 16
- m.rings = 8
+ m.radial_segments = 32
+ m.rings = 16
  var o := mesh_obj(parent,m,p,c,false,0,glow)
  o.scale = size * 0.5
  return o
 
-func cushion(p: Vector3, size: Vector3, color: Color, bevel: float = 2.0, parent: Node3D = self) -> MeshInstance3D:
- # Chamfered upholstery: planar faces, softened edges and corners, shared meshes.
- var key := str(size)+str(bevel)
+func cushion(p: Vector3, size: Vector3, color: Color, bevel: float = 2.0, parent: Node3D = self, tufted: bool = false) -> MeshInstance3D:
+ # Shared, smoothly rounded upholstery; recesses are geometry rather than decals.
+ var key := str(size)+str(bevel)+str(tufted)
  if not cushion_meshes.has(key):
-  var surface := SurfaceTool.new()
-  surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-  var h := size*0.5
-  var inner := h-Vector3.ONE*bevel
-  for axis in range(3):
-   var u := (axis+1)%3
-   var v := (axis+2)%3
-   for side in [-1,1]:
-    var face: Array[Vector3] = []
-    for corner in [Vector2(-1,-1),Vector2(1,-1),Vector2(1,1),Vector2(-1,1)]:
-     var point := Vector3.ZERO
-     point[axis] = h[axis]*side
-     point[u] = inner[u]*corner.x
-     point[v] = inner[v]*corner.y
-     face.append(point)
-    cushion_face(surface,face)
-  for axis in range(3):
-   var u := (axis+1)%3
-   var v := (axis+2)%3
-   for a in [-1,1]:
-    for b in [-1,1]:
-     var face: Array[Vector3] = []
-     for corner in [Vector2(-1,0),Vector2(1,0),Vector2(1,1),Vector2(-1,1)]:
-      var point := Vector3.ZERO
-      point[axis] = inner[axis]*corner.x
-      point[u] = (h[u] if corner.y == 0 else inner[u])*a
-      point[v] = (inner[v] if corner.y == 0 else h[v])*b
-      face.append(point)
-     cushion_face(surface,face)
-  for x in [-1,1]:
-   for y in [-1,1]:
-    for z in [-1,1]:
-     cushion_face(surface,[Vector3(h.x*x,inner.y*y,inner.z*z),Vector3(inner.x*x,h.y*y,inner.z*z),Vector3(inner.x*x,inner.y*y,h.z*z)])
-  cushion_meshes[key] = surface.commit()
+  cushion_meshes[key] = preload("res://scripts/upholstery_geometry.gd").build(size,bevel,tufted)
  var node := mesh_obj(parent,cushion_meshes[key],p,color)
  node.material_override = cabin_finish(1,color)
  return node
-
-func cushion_face(surface: SurfaceTool, points: Array[Vector3]) -> void:
- var normal := (points[1]-points[0]).cross(points[2]-points[0]).normalized()
- var centre := Vector3.ZERO
- for point in points: centre += point
- if normal.dot(centre) < 0:
-  points.reverse()
-  normal = -normal
- for i in range(1,points.size()-1):
-  for point in [points[0],points[i+1],points[i]]:
-   surface.set_normal(normal)
-   surface.set_uv(Vector2(point.x,point.z)*0.05)
-   surface.add_vertex(point)
 
 func cyl(p: Vector3, radius: float, height: float, c: Color, solid: bool = true, parent: Node3D = self, top: float = -1.0, metal: float = 0.0) -> MeshInstance3D:
  var m := CylinderMesh.new()
  m.top_radius = radius if top < 0 else top
  m.bottom_radius = radius
  m.height = height
- m.radial_segments = 20
+ m.radial_segments = 48
  return mesh_obj(parent,m,p,c,solid,metal)
 
 func line(a: Vector3, b: Vector3, radius: float, c: Color, parent: Node3D = self) -> MeshInstance3D:
@@ -230,13 +193,27 @@ func make_environment() -> void:
  e.background_color = Color("09131f")
  e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
  e.ambient_light_color = Color("b6c8c4")
- e.ambient_light_energy = 0.58
+ e.ambient_light_energy = 0.34
  e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+ if RenderingServer.get_current_rendering_method() == "forward_plus":
+  e.ssao_enabled = true
+  e.ssao_radius = 16.0
+  e.ssao_intensity = 1.25
+  e.ssao_power = 1.3
+  e.ssao_detail = 0.6
+  e.ssil_enabled = true
+  e.ssil_radius = 80.0
+  e.ssil_intensity = 0.7
+  e.glow_enabled = true
+  e.glow_intensity = 0.35
+  e.glow_bloom = 0.02
+  e.glow_hdr_threshold = 1.6
  # Depth fog begins beyond the cabin so nearby evidence stays crisp.
  e.fog_enabled = true
  e.fog_mode = Environment.FOG_MODE_DEPTH
  e.fog_light_color = Color("132636")
- e.fog_light_energy = 0.7
+ e.fog_light_energy = 0.35
+ e.fog_density = 0.00025
  e.fog_depth_begin = 550.0
  e.fog_depth_end = 3500.0
  e.fog_depth_curve = 1.25
@@ -246,7 +223,7 @@ func make_environment() -> void:
  var sun := DirectionalLight3D.new()
  sun.rotation_degrees = Vector3(-52,-35,0)
  sun.light_color = Color("96bfc9")
- sun.light_energy = 0.6
+ sun.light_energy = 0.24
  sun.shadow_enabled = true
  sun.directional_shadow_max_distance = 4500
  add_child(sun)
@@ -288,10 +265,15 @@ func carriage(index: int) -> void:
    var pz := z+40+j*170
    box(Vector3(side*508,173,pz),Vector3(10,155,8),GOLD, true,self,0.65)
    box(Vector3(side*506,170,pz+84),Vector3(2,2,158),GOLD,false)
-  for j in [120,450,700]:
+  for j in [40,380,720]:
    var p := Vector3(side*497,216,z+j)
+   box(p+Vector3(side*3,0,0),Vector3(8,33,20),WOOD,false)
    box(p,Vector3(7,25,12),GOLD,false,self,0.65)
-   ball(p+Vector3(-side*5,0,0),Vector3(14,21,14),Color("ffe3a5"),self,1.5)
+   ball(p+Vector3(-side*5,0,0),Vector3(14,21,14),Color("ffe3a5"),self,0.45)
+   for dz in [-5,0,5]:
+    line(p+Vector3(-side*11,-10,dz),p+Vector3(-side*11,10,dz),0.45,GOLD)
+   for y in [-11,11]:
+    box(p+Vector3(-side*5,y,0),Vector3(15,1.3,16),GOLD,false,self,0.7)
    light_at(p+Vector3(-side*15,0,0),Color("ffd69e"),1.4,220)
  for j in [0,800]:
   box(Vector3(-282,144,z+j),Vector3(456,290,10),shade)
@@ -319,64 +301,83 @@ func carriage(index: int) -> void:
  if index == 0: sign_text("05  ←   RESIDENT ACCESS ONLY",Vector3(0,160,2),0.25,GOLD)
  if index == 2: sign_text("09  →   RESIDENT ACCESS ONLY",Vector3(0,160,z+797),0.25,GOLD)
 
-func table_material() -> StandardMaterial3D:
+func table_material() -> ShaderMaterial:
  if materials.has("table_mahogany"): return materials["table_mahogany"]
- var material := StandardMaterial3D.new()
- material.albedo_texture = TABLE_TEXTURE
- material.roughness = 0.48
- material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+ var material := ShaderMaterial.new()
+ material.shader = CABIN_FINISH
+ material.set_shader_parameter("finish",5)
+ material.set_shader_parameter("wood_texture",TABLE_TEXTURE)
  materials["table_mahogany"] = material
  return material
 
 func table_slab(p: Vector3, size: Vector3) -> void:
- var slab := box(p,size,Color.WHITE)
- var arrays := slab.mesh.surface_get_arrays(0)
- var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
- var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
- var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
- # Use centimetres for consistent grain scale on every table. The photograph's
- # vertical grain follows the longest tabletop axis; edges keep the same scale.
- for i in range(vertices.size()):
-  var point := vertices[i]+size*0.5
-  if abs(normals[i].y) > 0.5:
-   uvs[i] = Vector2(point.z,point.x)/80.0 if size.x >= size.z else Vector2(point.x,point.z)/80.0
-  elif abs(normals[i].x) > 0.5:
-   uvs[i] = Vector2(point.y,point.z)/80.0
-  else:
-   uvs[i] = Vector2(point.y,point.x)/80.0
- arrays[Mesh.ARRAY_TEX_UV] = uvs
- var mesh := ArrayMesh.new()
- mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
- slab.mesh = mesh
+ # Retained for callers needing a single softened, veneered slab.
+ var slab := cushion(p,size,Color.WHITE,minf(size.y*0.25,1.5))
  slab.material_override = table_material()
 
 func table(p: Vector3, width: float = 72, depth: float = 72) -> void:
- table_slab(p+Vector3(0,74,0),Vector3(width,5,depth))
- table_slab(p+Vector3(0,77,0),Vector3(width-3,0.8,depth-3))
- for x in [-1,1]:
-  for z in [-1,1]: cyl(p+Vector3(x*(width/2-8),36,z*(depth/2-8)),2,72,GOLD,true,self,-1,0.5)
+ var model := Node3D.new()
+ model.name = "CraftedWalnutTable"
+ add_child(model)
+ model.position = p
+ preload("res://scripts/furniture_models.gd").table(self,model,width,depth)
 
 func seat(p: Vector3, color: Color = TEAL) -> void:
- box(p+Vector3(0,22,0),Vector3(62,35,63),Color("503528")).material_override = cabin_finish(2,Color("503528"))
- cushion(p+Vector3(0,41,0),Vector3(64,12,65),color,2.5)
- var back := cushion(p+Vector3(0,63,27),Vector3(64,63,12),color,3.0)
+ var model := Node3D.new()
+ model.name = "TuftedParlourChair"
+ add_child(model)
+ model.position = p
+ p = Vector3.ZERO
+ var timber := Color("493328")
+ var models = preload("res://scripts/furniture_models.gd")
+ # An open, crafted frame replaces the solid rectangular base.
+ for x in [-25,25]:
+  for z in [-24,24]:
+   var profile := PackedVector2Array([Vector2(0,1.8),Vector2(4,2.1),Vector2(5,1.7),Vector2(20,1.8),Vector2(24,2.6),Vector2(27,3.0),Vector2(30,2.7),Vector2(34,2.7)])
+   mesh_obj(model,models.lathe(profile),p+Vector3(x,0,z),timber).material_override = cabin_finish(2,timber)
+   cyl(p+Vector3(x,3,z),2.1,6,GOLD,true,model,-1,0.65)
+ for z in [-27,27]:
+  mesh_obj(model,models.apron(56,11,3),p+Vector3(0,29,z),timber).material_override = cabin_finish(2,timber)
+ for x in [-27,27]:
+  var side_apron := mesh_obj(model,models.apron(54,11,3),p+Vector3(x,29,0),timber)
+  side_apron.material_override = cabin_finish(2,timber)
+  side_apron.rotation.y = PI/2
+ cushion(p+Vector3(0,41,-2.5),Vector3(64,12,60),color,2.5,model)
+ models.timber_back(self,model,p+Vector3(0,63,28),Vector2(64,63))
+ var back := cushion(p+Vector3(0,63,20),Vector3(56,55,9),color,3,model,true)
  back.rotation.x = -0.08
  for x in [-27,27]:
-  cushion(p+Vector3(x,50,0),Vector3(10,13,61),color,2)
-  line(p+Vector3(x,54,-29),p+Vector3(x,54,27),0.65,GOLD)
- for x in [-20,0,20]:
-  for y in [57,77]: ball(p+Vector3(x,y,19),Vector3(1.8,1.8,1.2),GOLD)
- line(p+Vector3(-29,37,-32),p+Vector3(29,37,-32),0.7,GOLD)
- for x in [-23,23]: cyl(p+Vector3(x,5,-20),2,10,GOLD)
+  cyl(p+Vector3(x,43,-25),2.3,22,timber,true,model,2.8).material_override = cabin_finish(2,timber)
+  mesh_obj(model,models.arm(7,5,55),p+Vector3(x,45,0),timber).material_override = cabin_finish(2,timber)
+  mesh_obj(model,models.arm(10,12,60),p+Vector3(x,51,0),color).material_override = cabin_finish(1,color)
+ # Covered buttons sit inside the modeled depressions of the tilted back.
+ var back_basis := Basis(Vector3.RIGHT,-0.08)
+ for x in [-18,0,18]:
+  for y in [-11,10]:
+   ball(p+Vector3(0,63,20)+back_basis*Vector3(x,y,-3.4),Vector3(1.8,1.8,0.65),color.darkened(0.12),model)
+ # Welt cord follows the seat's rounded front corners rather than a straight rod.
+ var path: Array[Vector3] = []
+ for corner in [Vector2(-27.5,-28),Vector2(27.5,-28),Vector2(27.5,23),Vector2(-27.5,23)]:
+  var start_angle: float = [-PI,-PI/2,0.0,PI/2][path.size()/7]
+  for i in range(7):
+   var angle: float = start_angle+float(i)*PI/12
+   path.append(p+Vector3(corner.x+cos(angle)*4.55,40.5,corner.y+sin(angle)*4.55))
+ for i in range(path.size()): line(path[i],path[(i+1)%path.size()],0.20,color.lightened(0.12),model)
+ # A shallow brass crest gives the chair a tailored top outline.
+ for segment in range(12):
+  var xa := -27.0+segment*4.5
+  var xb := xa+4.5
+  line(p+Vector3(xa,92.7-4.5*pow(xa/27,2),23),p+Vector3(xb,92.7-4.5*pow(xb/27,2),23),0.30,GOLD,model)
 
 func leaf_material(dark: bool) -> StandardMaterial3D:
  var key := "palm_leaf_dark" if dark else "palm_leaf_light"
  if materials.has(key): return materials[key]
  var m := StandardMaterial3D.new()
  m.albedo_texture = LEAF_TEXTURE
- m.albedo_color = Color("b7cfb5") if dark else Color.WHITE
- m.roughness = 0.65
- # Explicit leaf UVs keep the photographed vertical veins running base to tip.
+ m.albedo_color = Color("68866b") if dark else Color("88a17b")
+ m.roughness = 0.78
+ m.metallic_specular = 0.24
+ # Keep the source texture and explicit UVs on every authored leaf surface.
  m.cull_mode = BaseMaterial3D.CULL_DISABLED
  m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
  materials[key] = m
@@ -403,58 +404,48 @@ func palm_blade(surface: SurfaceTool, base: Vector3, tip: Vector3, width: float,
    surface.add_vertex(points[index])
 
 func palm_spine(along: float, length: float, lift: float) -> Vector3:
- return Vector3(0,lift*sin(along*PI*0.8)-length*0.30*along*along,length*along)
+ return preload("res://scripts/palm_geometry.gd").spine(along,length,lift)
 
 func palm_rib(parent: Node3D, length: float, lift: float) -> void:
- # One mesh per curved midrib keeps the richer foliage affordable to render.
- var cylinder := CylinderMesh.new()
- cylinder.top_radius = 0.35
- cylinder.bottom_radius = 0.35
- cylinder.height = 1.0
- cylinder.radial_segments = 8
- var surface := SurfaceTool.new()
- surface.begin(Mesh.PRIMITIVE_TRIANGLES)
- for segment in range(8):
-  var a := palm_spine(float(segment)/8,length,lift)
-  var b := palm_spine(float(segment+1)/8,length,lift)
-  var delta := b-a
-  var basis := Basis(Quaternion(Vector3.UP,delta.normalized()))*Basis.from_scale(Vector3(1,delta.length(),1))
-  surface.append_from(cylinder,0,Transform3D(basis,(a+b)*0.5))
- mesh_obj(parent,surface.commit(),Vector3.ZERO,Color("748c43"))
+ mesh_obj(parent,preload("res://scripts/palm_geometry.gd").rib(length,lift),Vector3.ZERO,Color("526747"))
 
 func plant(p: Vector3, height: float = 100, spread: float = 35) -> void:
- cyl(p+Vector3(0,14,0),17,28,Color("a77758"),true,self,22)
+ var forms = preload("res://scripts/palm_geometry.gd")
+ mesh_obj(self,preload("res://scripts/garden_fixture_geometry.gd").pot_mesh(41,27),p,Color("926c53"))
  cyl(p+Vector3(0,28,0),21,2,Color("292e25"),false)
- # Slender, ringed palm cane below a crown of arching feather fronds.
  var crown_height := height*0.83
- cyl(p+Vector3(0,(28+crown_height)*0.5,0),2.8,crown_height-28,Color("89764d"),false,self,1.8)
- for ring in range(35,int(crown_height),8):
-  cyl(p+Vector3(0,ring,0),2.85,0.65,Color("635a3b"),false)
+ var cane := mesh_obj(self,forms.cane(crown_height),p,Color("4e5139"))
+ cane.name = "OrganicPalmCane"
+ cane.material_override = forms.bark_material()
  var crown := Node3D.new()
  add_child(crown)
  crown.position = p+Vector3(0,crown_height,0)
  palms.append(crown)
- for j in range(9):
+ # Older outer fronds droop; upright young fronds fill the crown with a varied fan.
+ for j in range(11):
   var frond := Node3D.new()
   crown.add_child(frond)
-  frond.rotation.y = j*TAU/9+rng.randf_range(-0.15,0.15)
-  var length := spread*rng.randf_range(0.88,1.10)
-  var lift := length*(0.85 if j%3 == 0 else 0.48)
+  frond.rotation.y = j*TAU/11+rng.randf_range(-0.16,0.16)
+  frond.rotation.z = sin(j*1.7)*0.055
+  var length := spread*rng.randf_range(0.90,1.16)
+  var lift: float = length*([0.98,0.52,0.38,0.70][j%4]+rng.randf_range(-0.055,0.055))
   var surface := SurfaceTool.new()
   surface.begin(Mesh.PRIMITIVE_TRIANGLES)
   palm_rib(frond,length,lift)
-  for pair in range(1,11):
-   var along := float(pair)/12
+  for pair in range(1,16):
+   var along := float(pair)/17
    var base := palm_spine(along,length,lift)
-   var blade_length := length*0.45*pow(1.0-along,0.55)
+   var blade_length := length*0.46*pow(1.0-along,0.53)*(0.92+0.08*sin(pair*1.7+j))
    for side in [-1,1]:
-    var tip := base+Vector3(side*blade_length,-blade_length*0.22,blade_length*0.45)
-    palm_blade(surface,base,tip,blade_length*0.16,0.15+float(pair%5)*0.16)
-  palm_blade(surface,palm_spine(0.8,length,lift),palm_spine(1.06,length,lift),length*0.06,0.5)
+    var phase: float = pair*1.3+j*0.6+side*0.5
+    var tip := base+Vector3(side*blade_length,-blade_length*(0.15+0.09*sin(phase)),blade_length*(0.38+0.10*cos(phase)))
+    forms.blade(surface,base,tip,maxf(0.85,blade_length*0.25),0.15+float(pair%5)*0.16,phase)
+  forms.blade(surface,palm_spine(0.84,length,lift),palm_spine(1.07,length,lift),length*0.065,0.5,float(j))
   surface.generate_normals()
   var leaves := MeshInstance3D.new()
+  leaves.name = "CurvedPalmLeaflets"
   leaves.mesh = surface.commit()
-  leaves.material_override = leaf_material(j%2 == 1)
+  leaves.material_override = leaf_material(j%3 != 0)
   frond.add_child(leaves)
 
 func residential() -> void:
@@ -464,9 +455,7 @@ func residential() -> void:
   plant(Vector3(-131,0,z+130),130,38)
  table(Vector3(-104,0,285),91,65)
  table(Vector3(107,0,285),90,90)
- box(Vector3(107,58,95),Vector3(103,115,115),Color("20494a"))
- box(Vector3(107,119,95),Vector3(99,7,112),Color("b2a18b"))
- for z in [60,90,120]: box(Vector3(107,125,z),Vector3(81,8,24),Color("c7b99e"))
+ preload("res://scripts/furniture_models.gd").build_chaise(self,self,Vector3(107,0,95))
  # Writing desk and handwritten note.
  box(Vector3(-102,77,285),Vector3(22,0.5,29),Color("e7d8b2"))
  var note := sign_text("Mara —\nReturn the cuttings.\nOr I report you at dawn.\n— Elias",Vector3(-102,77.4,285),0.055,Color("493e3c"))
@@ -476,13 +465,10 @@ func residential() -> void:
  light_at(Vector3(-128,100,292),Color("ffe0b7"),0.9,90)
  # Maintenance terminal.
  table(Vector3(107,0,655),94,67)
- box(Vector3(102,83,655),Vector3(29,9,22),Color("283e42"))
- box(Vector3(102,88,655),Vector3(26,1,19),Color("72bda9"),false,self,0,0.8)
- var terminal := sign_text("AXLE 12 · I. CHEN\n22:10 — 22:36\nAUTHENTICATED",Vector3(102,88.6,655),0.04,Color("153a35"))
- terminal.rotation_degrees.x = -90
- box(Vector3(-102,77,470),Vector3(18,1,23),GOLD)
- box(Vector3(-102,77.6,470),Vector3(15,0.3,20),Color("678e88"),false)
- for z in [120,600]: plant(Vector3(133,0,z),160,44)
+ HeroAssets.terminal(self,self,Vector3(102,83,655))
+ HeroAssets.framed_photo(self,self,Vector3(-102,77,470))
+ plant(Vector3(165,0,175),160,44)
+ plant(Vector3(133,0,600),160,44)
 
 func dining() -> void:
  for z in [1050,1250,1450]:
@@ -502,65 +488,65 @@ func dining() -> void:
     chair.add_child(item)
     item.position = Vector3(old.x+110,old.y,old.z-z-75)
   chair.rotation.y = PI
-  cyl(Vector3(-101,78,z),25,0.8,CREAM,false).mesh.radial_segments = 64
+  mesh_obj(self,CeramicProfiles.plate_mesh(),Vector3(-101,78,z),CREAM)
   for px in [-139,-62]:
    line(Vector3(px,78,z-17),Vector3(px,78,z+17),0.6,GOLD)
   cyl(Vector3(-127,87,z+28),3,18,Color("6a8b7b"),false,self,2)
- # Cup: open cylinder constructed from fine ceramic segments.
- var cup := Vector3(-88,78,1250)
- cyl(cup+Vector3(0,0.4,0),6.5,0.8,CREAM)
- for j in range(32):
-  var a := j*TAU/32
-  var part := box(cup+Vector3(cos(a)*4.4,4.5,sin(a)*4.4),Vector3(0.65,8,1.05),CREAM)
-  part.rotation.y = -a
- cyl(cup+Vector3(0,4,0),4.0,0.2,Color("593c31"),false)
- for j in range(11):
-  var a := float(j)*0.56
-  ball(cup+Vector3(cos(a)*3.6,4.3,sin(a)*3.6),Vector3(0.75,0.5,0.7),Color("aa6cbd"))
- var handle := TorusMesh.new()
- handle.inner_radius = 1.4
- handle.outer_radius = 2.1
- var h := mesh_obj(self,handle,cup+Vector3(6,4.8,0),GOLD,false,0.6)
- h.rotation.x = PI/2
- # Pastry.
- for j in range(7):
-  ball(Vector3(-95+(j-3)*2.3,81,1050+pow(float(j-3),2)*0.4),Vector3(4,6,9),Color("bb854b"))
- # Covered body, discreet stylization.
- ball(Vector3(-100,45,1345),Vector3(36,30,69),Color("d3cfb9"))
- ball(Vector3(-100,47,1313),Vector3(22,22,22),Color("d3cfb9"))
- box(Vector3(-100,28,1345),Vector3(40,25,85),TEAL)
+ HeroAssets.evidence_cup(self,self,Vector3(-88,78,1250))
+ # The dining roll is the scored, continuous model placed by hospitality props.
+ # A continuous opaque sheet keeps the scene discreet, with gravity-shaped folds.
+ HeroAssets.covered_scene(self,self,Vector3(-100,0,1345))
  # Service counter and cabinet.
  # Hollow cabinet: fly-sized cable access beneath the front door.
- box(Vector3(159,43,1480),Vector3(4,86,137),Color("214b49"))
- for side_z in [1412,1548]: box(Vector3(122,43,side_z),Vector3(77,86,4),Color("214b49"))
- box(Vector3(122,2.5,1480),Vector3(77,5,137),Color("214b49"))
- box(Vector3(122,35,1480),Vector3(77,3,137),Color("214b49"))
- box(Vector3(122,88,1480),Vector3(83,5,143),Color("bea783"))
- cabinet_door = box(Vector3(82,47,1460),Vector3(3,68,73),Color("315f59"))
- box(Vector3(79,53,1435),Vector3(2,16,2),GOLD,false)
+ HeroAssets.rounded(self,self,Vector3(159,43,1480),Vector3(4,86,137),0.5,Color("214b49"))
+ for side_z in [1412,1548]:
+  var end_panel: MeshInstance3D = preload("res://scripts/cabinet_assets.gd").framed_panel(self,self,Vector3(122,43,side_z),Vector3(77,86,4))
+  if side_z > 1480: end_panel.rotation.y = PI
+ HeroAssets.rounded(self,self,Vector3(122,2.5,1480),Vector3(77,5,137),0.8,Color("214b49"))
+ HeroAssets.rounded(self,self,Vector3(122,35,1480),Vector3(77,3,137),0.4,Color("214b49"))
+ HeroAssets.rounded(self,self,Vector3(122,88,1480),Vector3(83,5,143),1.2,Color("bea783"))
+ cabinet_door = preload("res://scripts/cabinet_assets.gd").framed_panel(self,self,Vector3(82,47,1460),Vector3(73,68,3))
+ cabinet_door.rotation.y = PI/2
+ # Stationary frame closes the remainder of the front, leaving only the authored
+ # cable opening below Y13 and the actual moving door when it is released.
+ HeroAssets.rounded(self,self,Vector3(82,47,1418.75),Vector3(3,68,9.4),0.3,Color("4d3328"))
+ var fixed_front: MeshInstance3D = preload("res://scripts/cabinet_assets.gd").framed_panel(self,self,Vector3(82,47,1521.25),Vector3(49.4,68,3))
+ fixed_front.rotation.y = PI/2
+ HeroAssets.rounded(self,self,Vector3(82,83.5,1480),Vector3(4,5,132),0.6,Color("4d3328"))
  # Tiny cable duct is a real gap beneath the door, with an accessible contact.
  line(Vector3(65,2,1395),Vector3(65,2,1455),0.8,Color("dc976b"))
  line(Vector3(65,2,1455),Vector3(104,11,1460),0.8,Color("dc976b"))
  box(Vector3(104,10,1460),Vector3(3,1,4),GOLD,false)
  box(Vector3(104,11,1460),Vector3(1.2,0.4,1.2),Color("72d9bc"),false,self,0,1)
  # Bottle stands behind cabinet door.
- cyl(Vector3(121,43,1460),3.5,13,Color("80548f"))
- cyl(Vector3(121,51,1460),1.9,3,GOLD)
- box(Vector3(121,44,1456.4),Vector3(5,7,0.25),CREAM,false)
- sign_text("V9\nSABLE",Vector3(121,44,1456.1),0.025,Color("4c3650")).rotation.y = PI
+ HeroAssets.chemical_bottle(self,self,Vector3(121,36.5,1460))
  for z in [940,1580]: plant(Vector3(127,0,z),175,40)
- for z in [1110,1320]:
-  box(Vector3(135,83,z),Vector3(53,6,57),Color("88684c"))
-  cyl(Vector3(135,40,z),4,80,GOLD)
+ for z in [1095,1320]:
+  HeroAssets.side_table(self,self,Vector3(135,0,z))
 
 func conservatory() -> void:
  for side in [-1,1]:
   for z in [1770,1950,2150,2360]:
-   plant(Vector3(side*125,0,z),rng.randf_range(135,205),40)
-  box(Vector3(side*134,25,2070),Vector3(45,50,570),Color("41594b"))
+   var palm_position := Vector3(side*125,0,z)
+   if side == 1 and z == 2150:
+    # Keep the mature crown and its pot clear of Lian's head and the next bed.
+    palm_position = Vector3(205,0,2140)
+   plant(palm_position,rng.randf_range(135,205),40)
+  for z in [1880,2070,2260]:
+   var planter := preload("res://scripts/garden_fixture_geometry.gd").new()
+   add_child(planter)
+   # The middle bed ends before the compartment partition, leaving the
+   # botanist's standing space clear without moving the person or hotspot.
+   planter.build_planter(Vector3(side*(165 if z == 2070 else 134),0,2008 if z == 2070 else z))
+   planter.rotation.y = PI/2
+   planter.scale = Vector3(0.30 if z == 2070 else 0.95,0.78,0.725)
  for z in [1830,2080,2290]:
   plant(Vector3(-89,0,z),110,29)
-  plant(Vector3(97,0,z+40),135,31)
+  if z == 2080:
+   # A compact specimen in the rear margin replaces the pot through Lian's feet.
+   plant(Vector3(87,0,2400),135,20)
+  else:
+   plant(Vector3(97,0,z+40),135,31)
  table(Vector3(104,0,1905),95,100)
  box(Vector3(102,80,1905),Vector3(17,0.5,23),Color("d9c399"))
  var tag := sign_text("OR-031 / M. SABLE\nLIVING SPECIMENS\nLEAF > MOON > DROP",Vector3(102,80.4,1905),0.032,Color("343f36"))
@@ -569,9 +555,8 @@ func conservatory() -> void:
   cyl(Vector3(123+j*5,81,1877),1.5,5,Color("b88860"))
   line(Vector3(123+j*5,84,1877),Vector3(123+j*5,94,1877),0.4,Color("4a9c66"))
  table(Vector3(-100,0,2235),95,95)
- drawer = box(Vector3(-100,80,2235),Vector3(44,8,34),Color("244945"))
- box(Vector3(-100,85,2220),Vector3(29,1,6),GOLD,false)
- box(Vector3(-100,80.5,2235),Vector3(25,1,29),Color("6b3d37"))
+ drawer = HeroAssets.dispatch_cover(self,self,Vector3(-100,80,2235))
+ HeroAssets.ledger(self,self,Vector3(-100,79.1,2235))
  # Orchid displayed on pedestal.
  cyl(Vector3(-100,40,2020),19,80,Color("35564e"))
  cyl(Vector3(-100,82,2020),11,5,Color("9e8862"))
@@ -583,23 +568,8 @@ func conservatory() -> void:
  ball(Vector3(-100,124,2019),Vector3(3,3,3),Color("d5b365"))
 
 func human(p: Vector3, coat: Color, hair: Color, name_text: String, hotspot_id: String = "") -> void:
- var n := Node3D.new()
- add_child(n)
- n.position = p
+ var n: Node3D = preload("res://scripts/resident_assets.gd").build(self,self,p,coat,hair)
  n.set_meta("hotspot_id",hotspot_id)
- # Humans remain life-size; the fly is 6mm long.
- for x in [-9,9]:
-  cyl(Vector3(x,36,0),7,62,Color("283139"),false,n)
-  ball(Vector3(x,7,-5),Vector3(14,12,27),Color("27252c"),n)
- cyl(Vector3(0,99,0),22,71,coat,false,n,16)
- ball(Vector3(0,151,-1),Vector3(29,35,28),Color("ad8870"),n)
- ball(Vector3(0,162,2),Vector3(30,19,29),hair,n)
- for side in [-1,1]:
-  line(Vector3(side*20,127,0),Vector3(side*25,93,-6),6,coat,n)
-  line(Vector3(side*25,93,-6),Vector3(side*17,77,-17),5,coat,n)
-  ball(Vector3(side*17,77,-17),Vector3(9,12,9),Color("ad8870"),n)
- box(Vector3(0,110,-20),Vector3(2,40,1),GOLD,false,n)
- for y in [101,113,125]: ball(Vector3(5,y,-20),Vector3(2,2,1),GOLD,n)
  var badge := sign_text(name_text,Vector3(0,180,0),0.18,GOLD,n)
  badge.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 
@@ -617,13 +587,11 @@ func make_hotspots() -> void:
 
 func unlock_cabinet() -> void:
  cabinet_door.visible = false
- for child in cabinet_door.get_children():
-  if child is StaticBody3D: child.collision_layer = 0
+ HeroAssets.set_colliders(cabinet_door,false)
 
 func unlock_dispatch() -> void:
  drawer.visible = false
- for child in drawer.get_children():
-  if child is StaticBody3D: child.collision_layer = 0
+ HeroAssets.set_colliders(drawer,false)
  var writing := sign_text("ORCHID CUTTINGS\nOR-031 / M. SABLE\nVALE HAS NOTICED",Vector3(-100,81.3,2235),0.038,CREAM)
  writing.rotation_degrees.x = -90
 

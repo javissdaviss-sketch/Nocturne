@@ -22,6 +22,7 @@ var evidence_label: Label
 var controls_label: Label
 var prompt: Label
 var toast_label: Label
+var prompt_backdrop: ColorRect
 var mode := "title"
 var nearest := ""
 var current_id := ""
@@ -168,7 +169,7 @@ func setup_hud() -> void:
  rect(hud,Vector2(35,822),Vector2(1370,1),Color("647263"))
  controls_label = label(hud,"WASD  Fly    SPACE / CTRL  Rise / descend    SHIFT  Precision    E  Inspect    L  Land",Vector2(36,842),Vector2(1100,30),14,PAPER)
  label(hud,"SCROLL  Camera",Vector2(1220,842),Vector2(200,30),14,MUTED)
- rect(hud,Vector2(395,732),Vector2(650,75),Color(0.025,0.07,0.065,0.9))
+ prompt_backdrop = rect(hud,Vector2(395,732),Vector2(650,75),Color(0.025,0.07,0.065,0.9))
  prompt = label(hud,"",Vector2(405,735),Vector2(630,68),19,GOLD)
  prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
  toast_label = label(hud,"",Vector2(400,125),Vector2(640,75),18,PAPER)
@@ -213,8 +214,10 @@ func start_game(fresh: bool) -> void:
   state = State.new()
   thumbnails.clear()
   # Restore puzzle meshes and collisions on a new run.
-  world.queue_free()
   remove_child(world)
+  # A fresh investigation replaces a complete detailed world. Release it before
+  # constructing the replacement so both scene trees never coexist in memory.
+  world.free()
   world = World.new()
   add_child(world)
  else:
@@ -262,6 +265,7 @@ func _process(delta: float) -> void:
  elapsed += delta
  toast_time = max(0,toast_time-delta)
  toast_label.visible = toast_time>0
+ prompt_backdrop.visible = mode == "play"
  if mode == "play":
   save_clock += delta
   if save_clock>12:
@@ -365,6 +369,7 @@ func show_inspection(id: String) -> void:
   save_game()
  button(p,"Return to flight   [E / Esc]",Vector2(26,555),Vector2(414,46),resume_game)
  label(modal,"A CLOSER LOOK",Vector2(45,145),Vector2(500,32),14,GOLD)
+ rect(modal,Vector2(35,767),Vector2(795,47),Color(0.035,0.10,0.085,0.95))
  label(modal,"Hold right mouse and drag to orbit · Scroll to zoom",Vector2(45,778),Vector2(780,30),15,PAPER)
  capture_evidence(id)
 
@@ -657,8 +662,9 @@ func apply_settings() -> void:
  world.set_atmosphere_enabled(bool(options.atmosphere))
  fly.sensitivity = float(options.sensitivity)
  Engine.max_fps = int(options.limit)
- for child in world.get_children():
-  if child is DirectionalLight3D: child.shadow_enabled = bool(options.shadows)
+ for child in world.find_children("*","Light3D",true,false):
+  if child is DirectionalLight3D or child.get_meta("room_key",false):
+   child.shadow_enabled = bool(options.shadows)
  if is_instance_valid(ambience): ambience.volume_db = linear_to_db(max(0.0001,float(options.train)))
 
 func setup_audio() -> void:

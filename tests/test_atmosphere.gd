@@ -35,6 +35,18 @@ func run() -> void:
  await process_frame
  check(bool(game.options.atmosphere),"Existing settings default to enabled atmosphere")
  check(not bool(game.options.shadows),"Existing graphics preferences are preserved")
+ var room_keys := 0
+ for light in game.world.find_children("*","Light3D",true,false):
+  if light.get_meta("room_key",false):
+   room_keys += 1
+   check(not light.shadow_enabled,"Saved shadow preference disables room key shadows")
+ check(room_keys > 0 and room_keys <= 14,"Interior uses a bounded set of shadowed room keys")
+ game.options.shadows = true
+ game.apply_settings()
+ for light in game.world.find_children("*","Light3D",true,false):
+  if light.get_meta("room_key",false): check(light.shadow_enabled,"Room key shadows enable with graphics setting")
+ game.options.shadows = false
+ game.apply_settings()
  check_enabled(game,true)
  # Even the worst random spread must leave every exterior drop outside glass.
  for emitter in game.world.atmosphere.emitters:

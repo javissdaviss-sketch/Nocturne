@@ -59,6 +59,11 @@ func run() -> void:
  existing.position = Vector3(90,0,0)
  existing.create_trimesh_collision()
  existing.get_child(0).collision_layer = 0
+ var rounded := MeshInstance3D.new()
+ rounded.mesh = preload("res://scripts/upholstery_geometry.gd").build(Vector3(5,8,6),0.5)
+ rounded.mesh.set_meta("solid_geometry_convex",true)
+ scene.add_child(rounded)
+ rounded.position = Vector3(100,0,0)
  var compiler = Compiler.new()
  compiler.build(scene,[excluded])
  for body in [cube.get_child(0),ring.get_child(0),copies.get_child(0),reflected.get_child(0)]:
@@ -84,11 +89,13 @@ func run() -> void:
  shape_query.transform.origin = reflected.global_position
  check(not space.intersect_shape(shape_query).is_empty(),"Reflected closed volume detects interior")
  check(reflected.get_child(0).global_basis.determinant() > 0.0,"Reflected mesh body has proper positive determinant")
+ shape_query.transform.origin = rounded.global_position
+ check(not space.intersect_shape(shape_query).is_empty(),"Authored convex rounded prop detects deep overlap")
  check(non_solid.get_child_count() == 0,"Excluded branch stays nonphysical")
  check(existing.get_child_count() == 1 and existing.get_child(0).collision_layer == 0,"Existing disabled puzzle collider is preserved")
- check(compiler.stats.mesh_bodies == 3 and compiler.stats.multimesh_bodies == 1,"Expected collider body counts")
+ check(compiler.stats.mesh_bodies == 4 and compiler.stats.multimesh_bodies == 1,"Expected collider body counts")
  compiler.build(scene,[excluded])
- check(compiler.stats.mesh_bodies == 3 and compiler.stats.multimesh_bodies == 1,"Repeated compilation creates no duplicates")
+ check(compiler.stats.mesh_bodies == 4 and compiler.stats.multimesh_bodies == 1,"Repeated compilation creates no duplicates")
  if failures.is_empty(): print("PASS: scaled/sheared/reflected solid volumes, unit-scale bodies, open torus, MultiMesh gap, deep overlap, exclusions, existing collider, idempotence")
  else: for failure in failures: printerr("FAIL: ",failure)
  quit(0 if failures.is_empty() else 1)

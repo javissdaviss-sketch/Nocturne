@@ -19,6 +19,9 @@ func add_carriage(index: int) -> void:
   for i in [0,1,2,0,2,3]:
    surface.set_normal(Vector3(-side,0,0))
    surface.set_uv(uvs[i]+uv_offset)
+   # Unshifted physical coordinates keep collected moisture at the real seals
+   # and mullions; the primary UV retains variation between carriage sides.
+   surface.set_uv2(uvs[i])
    surface.add_vertex(vertices[i])
   var pane := MeshInstance3D.new()
   pane.name = "RainGlass_%d_%s" % [index, "left" if side < 0 else "right"]

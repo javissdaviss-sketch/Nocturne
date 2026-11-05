@@ -10,9 +10,9 @@ For a one-time desktop install and future automatic updates, use **Nocturne-Setu
 
 Extract **Nocturne-Windows.zip**, then double-click **Nocturne.exe**. No installation, network connection, account, or Godot installation is required. Keep the included notices with the game. The unsigned executable may trigger Windows’ normal downloaded-app warning.
 
-Windows 10/11 x64, keyboard and mouse, and a dedicated GPU with OpenGL 3.3 support are the initial target. Actual Windows performance has not been measured in the Linux development environment. Defaults: 1280 × 800, 60 FPS cap, shadows enabled. Settings allow other resolutions, frame limits, shadows, sensitivity, and separate ambience/wing volume. Rain & atmosphere can be disabled in Settings to turn off window droplets, exterior precipitation, cabin dust, distance haze, and neon halos.
+Windows 10/11 x64, keyboard and mouse, and a modern dedicated GPU with Vulkan support are the high-quality target. The default renderer is Forward+; OpenGL Compatibility remains available through `--rendering-method gl_compatibility`. Actual Windows performance has not been measured in the Linux development environment. Defaults: 1280 × 800, 60 FPS cap, shadows enabled. Settings allow other resolutions, frame limits, shadows, sensitivity, and separate ambience/wing volume. Rain & atmosphere can be disabled in Settings to turn off window droplets, exterior precipitation, cabin dust, distance haze, and neon halos.
 
-A Linux x64 build is also included as a development convenience: `chmod +x Nocturne.x86_64` and run it on an X11-capable desktop with OpenGL 3.3 support.
+A Linux x64 export preset is included for development. After exporting, use `chmod +x Nocturne.x86_64` and run it on an X11-capable desktop with Vulkan support. The Compatibility override requires OpenGL 3.3.
 
 ## Controls
 
@@ -52,19 +52,20 @@ godot --path .
 
 The carriages carry a shared Deco identity: mounted twelve-carriage directories and service plaques, patterned runners, walnut flooring, woven seating, travel luggage and reading shelves, laid dining settings, and botanical work supplies. Additional props include overhead luggage racks, a hat-and-umbrella stand, a tabletop radio, a travel chess set and reading lamp, a wheeled tea trolley, and a garden watering can, propagation rack, seedling tray, hose reel, and slatted crate. Interior furniture, props, people, palm trunks and fronds now have collision that follows their visible geometry. Handles, rack openings and crate gaps remain open. Flight, walking, landing and takeoff use body sweeps; older saves embedded in formerly decorative props recover to nearby clear space. The six physical clues retain their original positions and inspection flow.
 
-The passing city uses layered parallax, housed neon signs with soft shader halos, rain on the sealed windows, exterior precipitation, and sparse lamplit dust. These effects run on the existing GL Compatibility renderer.
+The passing city uses layered parallax, housed neon signs with soft shader halos, rain on the sealed windows, exterior precipitation, and sparse lamplit dust. These effects work in Forward+ and GL Compatibility. Forward+ additionally provides room reflections, ambient occlusion, indirect screen-space lighting and restrained glow.
 
 The scenery is generated deterministically from original procedural geometry. World coordinates use one engine unit per centimetre. `world.gd` builds modular carriages and physical props; `fly.gd` handles centimetre-scale flight and cameras; `case_data.gd` contains the authored mystery; `case_state.gd` stores progress; `game.gd` owns interaction and UI. No external libraries, paid assets, API keys, or online services are needed.
 
 ### Verification
 
-The mouse-look regression requires a graphical display (or Xvfb), because headless Godot does not capture the mouse. Run `xvfb-run -a godot --path . --audio-driver Dummy --script res://tests/test_mouse.gd` in addition to the checks below.
+The mouse-look regression requires a graphical display (or Xvfb), because headless Godot does not capture the mouse. Run `xvfb-run -a godot --path . --rendering-method gl_compatibility --disable-render-loop --fixed-fps 60 --audio-driver Dummy --script res://tests/test_mouse.gd` in addition to the checks below. The input and physics checks keep the real display/backend while avoiding repeated software rasterization. Validate actual rendered output separately with `xvfb-run -a godot --path . --rendering-method forward_plus --rendering-driver vulkan --audio-driver Dummy --script res://tests/test_rendering.gd`.
 
 
 ```sh
 godot --headless --path . --editor --import --quit
 godot --headless --path . --script res://tests/test_case.gd
 godot --headless --path . --script res://tests/test_solid_geometry.gd
+godot --headless --path . --script res://tests/test_render_batches.gd
 XDG_DATA_HOME=/tmp/nocturne-solid-tests godot --headless --path . --script res://tests/test_solid_objects.gd
 godot --headless --path . --script res://tests/test_jump.gd
 XDG_DATA_HOME=/tmp/nocturne-atmosphere-tests godot --headless --path . --script res://tests/test_atmosphere.gd
@@ -90,7 +91,9 @@ The supplied Agatha cyber-luxe reference boards inform original in-engine furnit
 
 The notebook's **Life aboard the Nocturne** page introduces the residential night network, the train's tradition of repair and craftsmanship, and the botanical trust's conservation work. New details preserve the six evidence positions, fourteen open compartment entrances, cabinet duct, and dispatch puzzle.
 
-Static primitive visuals use spatially grouped MultiMeshes after collision compilation. Original physics nodes remain in place, and the opening cabinet, dispatch drawer, moving palms, city, rain, and particles retain independent behavior. Small trim does not cast shadows. Materials and cushion meshes are shared; brocade and wood grain are procedural, with no runtime asset downloads. `tests/capture_art.gd` produces repeatable corridor, sleeper, salon, archive, and fly-scale evidence views for graphical review.
+Repeated static meshes use spatially grouped MultiMeshes after collision compilation, preserving the authored geometry and material detail. Original physics nodes and attached labels remain in place, and the opening cabinet, dispatch drawer, moving palms, city, rain, and particles retain independent behavior. Transparent and mirrored authored meshes retain their individual rendering. Botanical brocade and timber textures provide close-range surface detail, with no runtime asset downloads. `tests/capture_art.gd` produces repeatable corridor, sleeper, salon, archive, and fly-scale evidence views for graphical review.
+
+The detailed model pass replaces furniture blockouts with constructed beds, draped bedding, framed cabinetry, profiled tables, upholstered seating and shaped botanical fixtures. Small props have leather seams and fittings, book bindings, open ceramics, continuous spouts, folded linen and woven basketry. Investigation objects retain their original positions while gaining modeled enclosures, labels, hardware and joinery. The [standalone model library](assets/models/README.md) contains reusable Godot scenes; the world uses the same builders. Separate studio, clay, rear and in-world reviews guide refinements.
 
 ## Credits and notices
 
@@ -101,3 +104,10 @@ Original story, geometry, UI, and synthesized audio created for this project. No
 The three investigation carriages are now 10.2 m wide (three times their original 3.4 m), with a continuous 1.1 m central corridor and fourteen rooms behind full-height partitions. Retracted sliding doors provide open physical entrances. Residential suites have beds, wardrobes and sitting areas; hospitality has reception, private dining and service rooms; the winter garden has propagation and archive compartments. Steel bulkheads, exposed overhead utilities and brass wayfinding take inspiration from Snowpiercer while retaining Nocturne's night-train setting.
 
 Furniture and the 6 mm fly keep their original scale. The six clues, conversations, cabinet duct and symbol puzzle stay in place. Window glass, outside rain, city clearance, flight recovery limits and saved-position validation follow the expanded width.
+
+
+## Design review and realism pass
+
+An independent visual reviewer assessed unchanged corridor, suite, salon, archive and evidence camera views across successive design/build/review cycles. Feedback drove quieter walnut and brocade, complete salon emblems, motivated pendant lighting, fewer competing brass dividers, and varied broadleaf/fern planting. The later realism pass adds shared rounded upholstery with modeled tuft recesses, shaped chair frames and tapered legs, smooth lathed ceramic profiles, subtle material relief and varnish, four-sample antialiasing, and Forward+ contact shading and reflections. Room shadow lights obey the existing Shadows setting.
+
+The art remains an original procedural prototype with stylized architecture and characters; these changes move its material response and forms toward realism. Hardware frame rate has not been measured on the player's laptop. Set resolution and frame limit in Settings. The standard regression flow uses GL Compatibility for input/physics checks and a separate actual Vulkan Forward+ frame test for high-quality rendering.

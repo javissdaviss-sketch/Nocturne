@@ -42,6 +42,9 @@ func _mesh_faces(mesh: Mesh) -> PackedVector3Array:
  return faces
 
 func _is_closed_primitive(mesh: Mesh) -> bool:
+ # Authored rounded solids can preserve deep-overlap recovery without filling
+ # the openings of other custom models. Only genuinely convex meshes opt in.
+ if mesh.get_meta("solid_geometry_convex",false): return true
  if mesh is BoxMesh: return true
  if mesh is CylinderMesh: return mesh.cap_top and mesh.cap_bottom
  if mesh is SphereMesh: return not mesh.is_hemisphere

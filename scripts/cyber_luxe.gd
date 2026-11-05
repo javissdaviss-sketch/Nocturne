@@ -15,9 +15,33 @@ func build_interior(w: Node3D, layout: Node3D) -> void:
   if room.car == 0: suite_details(room)
   elif room.car == 1: lounge_details(room)
   else: garden_details_luxe(room)
+ # Small dining pendants light the original evidence tables as well as the salons.
+ # Offset from the cup gives glazed rims and curved walls a readable highlight.
+ for z in [1050,1250,1450]:
+  pendant(Vector3(-78,214,z-45),false)
+  room_key(Vector3(-78,195,z-45),Color("ffe4c6"),11,225)
+ # Reading pendants serve the original inner-room furnishings as actual fixtures.
+ # This keeps crafted surfaces readable without lifting every room's exposure.
+ for point in [Vector2(-105,140),Vector2(-105,285),Vector2(-105,470),Vector2(107,95),Vector2(107,655)]:
+  pendant(Vector3(point.x,250,point.y),false)
+  room_key(Vector3(point.x,231,point.y),Color("ffe0b6"),8,245)
  for car in range(3):
   corridor_ceiling(car)
   curtains(car)
+  if RenderingServer.get_current_rendering_method() == "forward_plus":
+   for side in [-1,1]:
+    var probe := ReflectionProbe.new()
+    probe.size = Vector3(420,274,350 if car == 0 else 390)
+    probe.box_projection = true
+    probe.interior = true
+    probe.ambient_mode = ReflectionProbe.AMBIENT_COLOR
+    probe.ambient_color = Color("b6c8c4")
+    probe.ambient_color_energy = 0.34
+    probe.intensity = 0.7
+    probe.max_distance = 650
+    probe.enable_shadows = false
+    add_child(probe)
+    probe.position = Vector3(side*290,140,[180,1190,1860][car])
  finish_batches()
  # Use the same close-range surface language on repeated trim and furniture.
  for key in materials:
@@ -34,10 +58,10 @@ func build_interior(w: Node3D, layout: Node3D) -> void:
    var m := materials[key] as StandardMaterial3D
    m.emission_enabled = true
    m.emission = Color("ead3a1")
-   m.emission_energy_multiplier = 0.65
+   m.emission_energy_multiplier = 0.22
  for child in get_children():
   if child is MultiMeshInstance3D:
-   var key := str(child.name).trim_prefix("Details_")
+   var key := str(child.get_meta("detail_batch_key",str(child.name).trim_prefix("Details_")))
    child.material_override = materials[batches[key].material]
 
 func wall_panels(room: Dictionary) -> void:
@@ -56,9 +80,10 @@ func wall_panels(room: Dictionary) -> void:
    wainscot(x,middle,length)
    var wall: MeshInstance3D = world.box(Vector3(x,153,middle),Vector3(0.5,114,length),Color.WHITE,false,self)
    wall.material_override = world.cabin_finish(3,wallpaper)
+   wall.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
    for y in [92,96,211,216,278]:
     box(Vector3(x+face*0.8,y,middle),Vector3(1.0,1.2,length),BRASS,true)
-   var count := maxi(1,int(length/68))
+   var count := maxi(1,int(length/110))
    for j in range(count+1):
     var z: float = span.x+length*float(j)/count
     box(Vector3(x+face*0.6,150,z),Vector3(1,119,1.1),BRASS,true)
@@ -107,11 +132,13 @@ func transverse_panels(room: Dictionary) -> void:
   box(Vector3(x,44,z),Vector3(438,86,1),MAHOGANY)
   var finish: MeshInstance3D = world.box(Vector3(x,164,z),Vector3(438,139,0.5),Color.WHITE,false,self)
   finish.material_override = world.cabin_finish(3,Color("293e39") if room.car != 1 else Color("30434a"))
+  finish.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
   for y in [13,78,91,235,278]:
    box(Vector3(x,y,z+end.y*0.8),Vector3(438,1.1,1),BRASS,true)
   for dx in [-204,-136,-68,0,68,136,204]:
    box(Vector3(x+dx,45,z+end.y*0.8),Vector3(1,59,1),BRASS,true)
-   box(Vector3(x+dx,164,z+end.y*0.8),Vector3(0.7,138,0.7),BRASS,true)
+   if int(abs(dx))%136 == 0:
+    box(Vector3(x+dx,164,z+end.y*0.8),Vector3(0.7,138,0.7),BRASS,true)
 
 func corridor_ceiling(car: int) -> void:
  var start := float(car)*840
@@ -124,7 +151,7 @@ func corridor_ceiling(car: int) -> void:
   cyl(Vector3(0,280,z+50),16,3,BRASS,true)
   instance("sphere",Vector3(0,277,z+50),Vector3(13,6,13),Color("ecd7ac"))
  for z in [start+190,start+610]:
-  world.light_at(Vector3(0,242,z),Color("ffd5a1"),0.65,230)
+  world.light_at(Vector3(0,242,z),Color("ffd5a1"),1.0,190)
  # A small in-universe address at the carriage threshold.
  var names := ["THE NIGHT RESIDENCES","THE MERIDIAN SALON","THE LIVING ARCHIVE"]
  var panel_z := start+12
@@ -137,63 +164,58 @@ func suite_details(room: Dictionary) -> void:
  var side: int = room.side
  var z: float = (room.lo+room.hi)*0.5
  var bx: float = side*415
- # Carved headboard, velvet insert, buttoning, turned posts and brass bed rails.
- box(Vector3(bx,88,z-100.8),Vector3(119,48,2),VELVET)
- for dx in [-69,69]:
-  cyl(Vector3(bx+dx,62,z-105),5,122,MAHOGANY)
-  instance("sphere",Vector3(bx+dx,128,z-105),Vector3(11,11,11),BRASS,true)
- for y in [65,112]: box(Vector3(bx,y,z-99),Vector3(121,1.2,1),BRASS,true)
- for dx in [-42,-21,0,21,42]:
-  for y in [77,98]:
-   instance("sphere",Vector3(bx+dx,y,z-99),Vector3(2.4,2.4,1.2),BRASS,true)
- for dx in [-65,65]:
-  box(Vector3(bx+dx,27,z+1),Vector3(2,2,197),BRASS,true)
- for offset in [-45,0,45]:
-  box(Vector3(bx+offset,68.1,z+22),Vector3(0.6,0.4,146),BRASS,true)
- box(Vector3(bx,68.3,z+71),Vector3(132,0.5,25),Color("9b8665"))
- # Bedside control pedestal and small dome reading lamp.
- var px := bx-side*96
- box(Vector3(px,31,z-70),Vector3(36,62,40),MAHOGANY)
- box(Vector3(px,63,z-70),Vector3(38,2,42),BRASS,true)
- cyl(Vector3(px,72,z-70),2,18,BRASS,true)
- instance("sphere",Vector3(px,84,z-70),Vector3(22,14,22),VELVET)
- box(Vector3(px,49,z-91),Vector3(22,10,1),CYAN)
- for dx in [-22,22]:
-  box(Vector3(side*230+dx,117,room.hi-54.7),Vector3(39,178,1),MAHOGANY)
-  for y in [32,205]: box(Vector3(side*230+dx,y,room.hi-55.5),Vector3(36,1,1),BRASS,true)
+ preload("res://scripts/sleeping_assets.gd").build_bedside(world,self,Vector3(bx-side*96,0,z-70))
  # Travel trunk and subtle perimeter wiring, pulled away from original clues.
  suitcase(Vector3(side*420,1,z+125),Vector3(96,42,45),MAHOGANY)
  box(Vector3(side*420,29,z+101.8),Vector3(87,0.7,0.6),CYAN)
  data_slate(Vector3(side*242,78,room.lo+75))
- desk_lamp(Vector3(side*242-side*24,78,room.lo+57))
+ desk_lamp(Vector3(side*242+side*24,78,room.lo+57))
  pocket_watch(Vector3(side*242+side*25,79,room.lo+78))
+ room_key(Vector3(side*396,237,z+12),Color("ffcf95"),17,295)
+ pendant(Vector3(side*396,267,z+12),false)
 
 func curtains(car: int) -> void:
- for side in [-1,1]:
-  for z in range(car*840+40,car*840+790,170):
-   # Folded velvet at the mullions keeps the rain-streaked view open.
-   for dz in [-7,0,7]:
-    cyl(Vector3(side*489,183,z+dz),8,159,VELVET)
-   box(Vector3(side*481,155,z),Vector3(2,5,25),BRASS,true)
-   box(Vector3(side*493,266,z+73),Vector3(8,16,155),VELVET)
-   box(Vector3(side*488,256,z+73),Vector3(1,1,155),BRASS,true)
+ preload("res://scripts/sleeping_assets.gd").build_curtains(world,self,car)
 
 func data_slate(p: Vector3) -> void:
- box(p,Vector3(17,1.5,23),MAHOGANY,false,0.08)
- box(p+Vector3(0,0.9,0),Vector3(13,0.25,18),Color("244744"),false,0.08)
- for j in range(4):
-  box(p+Vector3(0,1.1,-5+j*2.5),Vector3(9-j,0.15,0.25),CYAN,false,0.08)
+ preload("res://scripts/hero_assets.gd").data_slate(world,self,p)
 
 func desk_lamp(p: Vector3) -> void:
- cyl(p+Vector3(0,1,0),13,2,BRASS,true)
- cyl(p+Vector3(0,13,0),1.8,24,BRASS,true)
- # A linen shade over quiet cyan wiring echoes the reference's glass-table lamp.
- instance("sphere",p+Vector3(0,15,0),Vector3(3.5,18,3.5),CYAN)
- cyl(p+Vector3(0,28,0),20,17,Color("ead3a1"))
- for j in range(10):
-  var angle := j*TAU/10
-  rod(p+Vector3(cos(angle)*10,20,sin(angle)*10),p+Vector3(cos(angle)*10,36,sin(angle)*10),0.25,BRASS,true)
- for y in [20,36]: instance("fine_ring",p+Vector3(0,y,0),Vector3(20.5,0.7,20.5),BRASS,true)
+ preload("res://scripts/sleeping_assets.gd").build_reading_lamp(world,self,p)
+
+func room_key(p: Vector3, color: Color, energy: float, reach: float) -> void:
+ var light := SpotLight3D.new()
+ light.set_meta("room_key",true)
+ light.light_color = color
+ light.light_energy = energy
+ light.light_size = 8.0
+ light.spot_range = reach
+ light.spot_angle = 66
+ light.spot_attenuation = 0.65
+ light.spot_angle_attenuation = 0.6
+ light.shadow_enabled = true
+ light.shadow_bias = 0.18
+ light.shadow_normal_bias = 1.0
+ add_child(light)
+ light.position = p
+ light.rotation.x = -PI/2
+
+func pendant(p: Vector3, salon: bool) -> void:
+ var radius := 33.0 if salon else 23.0
+ cyl(Vector3(p.x,291,p.z),18,4,BRASS,true)
+ rod(Vector3(p.x,290,p.z),p+Vector3(0,9,0),1.4,BRASS,true)
+ var shade_profile: Array[Vector2] = [Vector2(radius,-5.5),Vector2(radius+0.4,-5),Vector2(radius*0.88,5),Vector2(radius*0.86,5.5),Vector2(radius*0.86-0.5,5.5),Vector2(radius*0.88-0.5,5),Vector2(radius-0.5,-5),Vector2(radius,-5.5)]
+ var shade: MeshInstance3D = world.mesh_obj(self,preload("res://scripts/ceramic_profiles.gd").lathe(shade_profile),p,Color("ead3a1"))
+ shade.material_override = preload("res://scripts/sleeping_assets.gd").cloth_material(Color("ead3a1"))
+ var diffuser: MeshInstance3D = world.cyl(p-Vector3(0,6.5,0),radius*0.90,1,Color("f1d6a4"),false,self)
+ diffuser.material_override = world.mat(Color("f1d6a4"),0,0.8)
+ diffuser.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+ for h in [-7,7]:
+  instance("fine_ring",p+Vector3(0,h,0),Vector3(radius*2+3,2,radius*2+3),BRASS,true)
+ instance("fine_ring",p+Vector3(0,-9,0),Vector3(radius*1.5,1,radius*1.5),MAHOGANY)
+ for j in range(16):
+  var a := j*TAU/16
+  rod(p+Vector3(cos(a)*radius,-6,sin(a)*radius),p+Vector3(cos(a)*radius,6,sin(a)*radius),0.7,BRASS,true)
 
 func pocket_watch(p: Vector3) -> void:
  cyl(p,9,1.5,BRASS,true)
@@ -217,18 +239,33 @@ func lounge_details(room: Dictionary) -> void:
    cyl(Vector3(x,88,z),6,10,Color("345c55"))
    for j in range(3): flower_sprig(Vector3(x,94,z),Vector3(j*2-2,12,j*2-2),Color("bfac90"))
   world.plant(Vector3(side*465,1,room.lo+35),154,34)
-  # Small wall medallion gives each room an identifiable focal point.
-  var medallion := Vector3(side*290,175,room.hi-4)
-  instance("fine_ring",medallion,Vector3(76,3,76),BRASS,true,Vector3(PI/2,0,0))
-  for ray in range(9):
-   var angle := -PI*0.5+ray*PI/8
-   rod(medallion+Vector3(0,-22,-1),medallion+Vector3(cos(angle)*32,sin(angle)*32,-1),0.7,BRASS,true)
+  # Complete, symmetric sunburst on a quiet walnut plaque.
+  var medallion := Vector3(side*290,175,room.hi-5.5)
+  box(medallion+Vector3(0,0,0.5),Vector3(109,114,1),MAHOGANY)
+  for x in [-52,52]: box(medallion+Vector3(x,0,-1),Vector3(1,109,1),BRASS,true)
+  for y in [-54,54]: box(medallion+Vector3(0,y,-1),Vector3(104,1,1),BRASS,true)
+  for radius in [18,39,46]:
+   instance("fine_ring",medallion-Vector3(0,0,1.5),Vector3(radius*2,1.3,radius*2),BRASS,true,Vector3(PI/2,0,0))
+  for ray in range(24):
+   var angle := ray*TAU/24
+   rod(medallion+Vector3(cos(angle)*21,sin(angle)*21,-1.5),medallion+Vector3(cos(angle)*37,sin(angle)*37,-1.5),1.0,BRASS,true)
+  var title: Label3D = world.sign_text("N",medallion+Vector3(0,1,-2.5),1.4,CREAM,self)
+  title.font = preload("res://assets/Editorial.ttf")
+  title.rotation.y = PI
+  var caption: Label3D = world.sign_text("MERIDIAN",medallion+Vector3(0,-50,-2.5),0.32,BRASS,self)
+  caption.rotation.y = PI
+  pendant(Vector3(side*345,257,(room.lo+room.hi)*0.5),true)
+  room_key(Vector3(side*345,239,(room.lo+room.hi)*0.5),Color("ffd7a5"),22,325)
  else:
-  for z in range(int(room.lo+35),int(room.hi-20),46):
-   box(Vector3(side*339,47,z),Vector3(1,65,37),MAHOGANY)
-   box(Vector3(side*337.8,49,z),Vector3(1,1,12),BRASS,true)
-   cyl(Vector3(side*401,103,z),6,14,Color("466864"))
-   cyl(Vector3(side*401,111,z),6.2,2,BRASS,true)
+  # A compact service group leaves a clear working surface and the slate exposed.
+  for variation in range(3):
+   var height: float = 10.0+variation*3.0
+   var p := Vector3(side*(441+(variation%2)*10),96,room.lo+50+variation*17)
+   var tint: Color = [Color("466864"),Color("b4ab91"),Color("756452")][variation]
+   lathed("galley_canister_"+str(variation),[Vector2(0.02,0),Vector2(2.6,0),Vector2(3.0,0.4),Vector2(3.1,1.0),Vector2(3.1,height-1.0),Vector2(2.9,height-0.3),Vector2(2.7,height),Vector2(0.02,height)],p,tint)
+   lathed("galley_lid_"+str(variation),[Vector2(0.02,0),Vector2(3.1,0),Vector2(3.3,0.3),Vector2(3.2,0.6),Vector2(2.6,0.9),Vector2(0.02,1.0)],p+Vector3(0,height,0),BRASS,true)
+   instance("fine_ring",p+Vector3(0,height+1.8,0),Vector3(2.0,0.45,2.0),BRASS,true,Vector3(PI/2,0,0))
+   rounded_box(p+Vector3(-side*3.12,height*0.5,0),Vector3(0.25,3.5,3),MAHOGANY,0.1)
   data_slate(Vector3(side*393,97,(room.lo+room.hi)*0.5))
 
 func garden_details_luxe(room: Dictionary) -> void:
