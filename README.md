@@ -1,10 +1,10 @@
-# A Fly on the Night Train
+# Fly Spy With My Little Eye
 
 A playable, original 3D murder-mystery prototype. You are a six-millimetre housefly aboard the Nocturne, a twelve-carriage residential train. Three connected carriages are open: the residences, dining lounge, and tropical winter garden. Explore, inspect physical evidence, overhear residents, and solve Elias Vale’s murder.
 
 ## Automatic updates
 
-For a one-time desktop install and future automatic updates, use **Nocturne-Setup-Windows.zip**, extract it, and run **Install-Nocturne.cmd**. Then launch from the **Nocturne** desktop shortcut. See [UPDATES.md](UPDATES.md) for the build/test/deploy pipeline, rollback, and setup details.
+For a one-time desktop install and future automatic updates, use **Nocturne-Setup-Windows.zip**, extract it, and run **Install-Nocturne.cmd**. Then launch from the **Fly Spy With My Little Eye** desktop shortcut. See [UPDATES.md](UPDATES.md) for the build/test/deploy pipeline, rollback, and setup details.
 
 ## Play on Windows
 
@@ -111,3 +111,8 @@ Furniture and the 6 mm fly keep their original scale. The six clues, conversatio
 An independent visual reviewer assessed unchanged corridor, suite, salon, archive and evidence camera views across successive design/build/review cycles. Feedback drove quieter walnut and brocade, complete salon emblems, motivated pendant lighting, fewer competing brass dividers, and varied broadleaf/fern planting. The later realism pass adds shared rounded upholstery with modeled tuft recesses, shaped chair frames and tapered legs, smooth lathed ceramic profiles, subtle material relief and varnish, four-sample antialiasing, and Forward+ contact shading and reflections. Room shadow lights obey the existing Shadows setting.
 
 The art remains an original procedural prototype with stylized architecture and characters; these changes move its material response and forms toward realism. Hardware frame rate has not been measured on the player's laptop. Set resolution and frame limit in Settings. The standard regression flow uses GL Compatibility for input/physics checks and a separate actual Vulkan Forward+ frame test for high-quality rendering.
+
+
+The game is now titled **Fly Spy With My Little Eye**. The Nocturne remains the name of the train. Existing update URLs, launcher storage and the original Godot save profile remain compatible. Existing Nocturne desktop shortcuts targeting the installed updater are renamed on first launch; unrelated shortcuts are left alone.
+
+Fourteen room portals now have reserved approach volumes. Wall rails stop at the jambs, door leaves park within their own wall bays, and nonessential furnishings have been moved clear of the openings. Door clearance is checked with full-height overlap volumes and two-way fly-body sweeps. Clue positions and the cable route stay fixed.

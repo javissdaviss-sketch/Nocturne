@@ -18,8 +18,8 @@ func build_interior(w: Node3D, layout: Node3D) -> void:
  # Small dining pendants light the original evidence tables as well as the salons.
  # Offset from the cup gives glazed rims and curved walls a readable highlight.
  for z in [1050,1250,1450]:
-  pendant(Vector3(-78,214,z-45),false)
-  room_key(Vector3(-78,195,z-45),Color("ffe4c6"),11,225)
+  pendant(Vector3(-78,250,z-45),false)
+  room_key(Vector3(-78,231,z-45),Color("ffe4c6"),11,225)
  # Reading pendants serve the original inner-room furnishings as actual fixtures.
  # This keeps crafted surfaces readable without lifting every room's exposure.
  for point in [Vector2(-105,140),Vector2(-105,285),Vector2(-105,470),Vector2(107,95),Vector2(107,655)]:
@@ -92,7 +92,8 @@ func wall_panels(room: Dictionary) -> void:
    box(Vector3(side*50.5,139,z),Vector3(3,276,3),MAHOGANY)
    box(Vector3(side*48.5,139,z),Vector3(0.7,263,0.7),BRASS,true)
  # A warm fluted wall lamp at each entrance, with cyan access-control inset.
- var lamp_z: float = entry-61
+ var lamp_z: float = entry-float(room.width)*0.5-15.0
+ if lamp_z-7.0 < lo+5.0: lamp_z = entry+float(room.width)*0.5+15.0
  box(Vector3(side*48,230,lamp_z),Vector3(5,37,13),MAHOGANY)
  box(Vector3(side*44,230,lamp_z),Vector3(4,26,9),Color("ead3a1"))
  for dz in [-4.6,0,4.6]:
@@ -101,11 +102,12 @@ func wall_panels(room: Dictionary) -> void:
  box(Vector3(side*48,121,entry-49),Vector3(1.5,13,6),MAHOGANY)
  box(Vector3(side*46.8,123,entry-49),Vector3(0.5,7,3.8),CYAN)
  # Enriched parked door leaf, never across the open entrance.
- box(Vector3(side*49,111,entry+79),Vector3(0.7,172,41),MAHOGANY)
- for z in [entry+61,entry+97]:
+ var parked: float = room.parked
+ box(Vector3(side*49,111,parked),Vector3(0.7,172,41),MAHOGANY)
+ for z in [parked-18,parked+18]:
   box(Vector3(side*48,111,z),Vector3(0.5,163,0.7),BRASS,true)
  for y in [30,191]:
-  box(Vector3(side*48,y,entry+79),Vector3(0.5,0.7,37),BRASS,true)
+  box(Vector3(side*48,y,parked),Vector3(0.5,0.7,37),BRASS,true)
  # Broad exterior window sill and upholstered wall panels below the glass.
  box(Vector3(side*499,92,(lo+hi)*0.5),Vector3(16,4,hi-lo-14),MAHOGANY)
  for y in [12,83]:

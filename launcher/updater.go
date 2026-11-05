@@ -200,7 +200,7 @@ func (u *Updater) checkForUpdate() (bool, error) {
 			return false, nil
 		}
 	}
-	fmt.Println("Downloading Nocturne " + m.Version + "...")
+	fmt.Println("Downloading Fly Spy With My Little Eye " + m.Version + "...")
 	response, err := u.Client.Get(m.URL)
 	if err != nil {
 		return false, err

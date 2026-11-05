@@ -13,7 +13,10 @@ uniform vec4 tint : source_color;
 uniform sampler2D timber_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 varying vec3 timber_position;
 varying vec3 timber_normal;
-void vertex() { timber_position = VERTEX; timber_normal = NORMAL; }
+void vertex() {
+ vec3 scale = vec3(length(MODEL_MATRIX[0].xyz),length(MODEL_MATRIX[1].xyz),length(MODEL_MATRIX[2].xyz));
+ timber_position = VERTEX*scale; timber_normal = normalize(NORMAL/max(scale,vec3(0.0001)));
+}
 void fragment() {
  vec3 blend = pow(abs(timber_normal),vec3(6.0));
  blend /= max(dot(blend,vec3(1.0)),0.0001);

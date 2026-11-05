@@ -23,7 +23,7 @@ func main() {
 		if quiet {
 			fmt.Fprintln(os.Stderr, err)
 		} else {
-			showMessage("Nocturne", err.Error(), true)
+			showMessage("Fly Spy With My Little Eye", err.Error(), true)
 		}
 		os.Exit(1)
 	}
@@ -110,7 +110,7 @@ func run(args []string) error {
 			return err
 		}
 		if !quiet {
-			showMessage("Nocturne installed", "A Nocturne shortcut has been added to your desktop. Open it to play. Future tested updates download automatically when you launch the game. Your existing case saves are preserved.", false)
+			showMessage("Fly Spy With My Little Eye installed", "A Fly Spy With My Little Eye shortcut has been added to your desktop. Open it to play. Future tested updates download automatically when you launch the game. Your existing case saves are preserved.", false)
 		}
 		return nil
 	}
@@ -121,7 +121,7 @@ func run(args []string) error {
 		offline = true
 	}
 	if !offline {
-		fmt.Println("Nocturne: checking for updates...")
+		fmt.Println("Fly Spy With My Little Eye: checking for updates...")
 		if updated, updateErr := updater.checkForUpdate(); updateErr != nil {
 			log.Printf("Update unavailable; retaining installed game: %v", updateErr)
 		} else if updated {
@@ -131,7 +131,7 @@ func run(args []string) error {
 	if _, err = updater.current(); err != nil {
 		return errors.New("No installed game is available. Extract the setup ZIP and run Install-Nocturne.cmd.")
 	}
-	fmt.Println("Starting Nocturne...")
+	fmt.Println("Starting Fly Spy With My Little Eye...")
 	hideConsole()
 	return updater.runGame()
 }

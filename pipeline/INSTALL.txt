@@ -1,8 +1,8 @@
-NOCTURNE — ONE-TIME DESKTOP SETUP
+FLY SPY WITH MY LITTLE EYE — ONE-TIME DESKTOP SETUP
 
 1. Extract this entire ZIP. Do not run the launcher from inside the ZIP viewer.
 2. Double-click Install-Nocturne.cmd.
-3. Open the Nocturne shortcut created on your desktop.
+3. Open the Fly Spy With My Little Eye shortcut created on your desktop.
 
 The launcher and game are installed for your Windows account under
 %LOCALAPPDATA%\Nocturne. Administrator access is not needed.

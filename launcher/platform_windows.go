@@ -54,7 +54,7 @@ func createShortcut(root string) error {
 		return errors.New("Windows system directory unavailable")
 	}
 	powershell := filepath.Join(windows, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
-	script := "$ErrorActionPreference='Stop'; $desktop=[Environment]::GetFolderPath('Desktop','DoNotVerify'); if([string]::IsNullOrEmpty($desktop)){throw 'Desktop folder is unavailable'}; [IO.Directory]::CreateDirectory($desktop)|Out-Null; $shell=New-Object -ComObject WScript.Shell; $shortcut=$shell.CreateShortcut((Join-Path $desktop 'Nocturne.lnk')); $shortcut.TargetPath=" + psQuote(filepath.Join(root, "Nocturne-Launcher.exe")) + "; $shortcut.WorkingDirectory=" + psQuote(root) + "; $shortcut.Description='Play Nocturne and check for updates'; $shortcut.Save()"
+	script := "$ErrorActionPreference='Stop'; $desktop=[Environment]::GetFolderPath('Desktop','DoNotVerify'); if([string]::IsNullOrEmpty($desktop)){throw 'Desktop folder is unavailable'}; [IO.Directory]::CreateDirectory($desktop)|Out-Null; $shell=New-Object -ComObject WScript.Shell; $shortcut=$shell.CreateShortcut((Join-Path $desktop 'Fly Spy With My Little Eye.lnk')); $shortcut.TargetPath=" + psQuote(filepath.Join(root, "Nocturne-Launcher.exe")) + "; $shortcut.WorkingDirectory=" + psQuote(root) + "; $shortcut.Description='Play Fly Spy With My Little Eye and check for updates'; $shortcut.Save()"
 	cmd := exec.Command(powershell, "-NoProfile", "-NonInteractive", "-Command", script)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	if out, err := cmd.CombinedOutput(); err != nil {

@@ -45,6 +45,7 @@ var ending_text: Label
 
 func _ready() -> void:
  get_tree().auto_accept_quit = false
+ sync_desktop_title()
  smoke = "--smoke" in OS.get_cmdline_user_args()
  capture_mode = "--capture" in OS.get_cmdline_user_args()
  var cfg := ConfigFile.new()
@@ -200,7 +201,7 @@ func show_title() -> void:
  modal.add_child(shade)
  label(modal,"N O C T U R N E    /    A  S M A L L  M Y S T E R Y",Vector2(72,76),Vector2(700,36),14,GOLD)
  rect(modal,Vector2(73,141),Vector2(61,2),GOLD)
- label(modal,"A fly on the\nnight train.",Vector2(66,186),Vector2(750,230),76,PAPER,true)
+ label(modal,"Fly Spy\nWith My Little Eye",Vector2(66,186),Vector2(750,230),61,PAPER,true)
  label(modal,"Twelve carriages. Three suspects.\nOne very small witness.",Vector2(74,449),Vector2(510,90),23,MUTED)
  label(modal,"A cozy cyberpunk murder mystery,\nseen from six millimetres above the table.",Vector2(74,556),Vector2(520,70),17,PAPER)
  button(modal,"BEGIN INVESTIGATION   →",Vector2(74,665),Vector2(345,58),func(): start_game(true))
@@ -781,3 +782,15 @@ func run_smoke() -> void:
  await get_tree().process_frame
  print("INTEGRATION PASS: 3 carriages, 15 hotspots, inspection, cabinet, notebook, deduction, ending, save/reload, settings")
  quit_game()
+
+func sync_desktop_title() -> void:
+ if OS.get_name() != "Windows" or FileAccess.file_exists("user://desktop-title-v2"): return
+ var script := FileAccess.get_file_as_string("res://platform/rename_shortcut.ps1")
+ if script.is_empty(): return
+ var system_root := OS.get_environment("SystemRoot")
+ if system_root.is_empty(): return
+ var output: Array = []
+ var code := OS.execute(system_root.path_join("System32/WindowsPowerShell/v1.0/powershell.exe"),["-NoProfile","-NonInteractive","-WindowStyle","Hidden","-Command",script],output,true,false)
+ if code == 0:
+  var marker := FileAccess.open("user://desktop-title-v2",FileAccess.WRITE)
+  if marker: marker.store_string("Fly Spy With My Little Eye")

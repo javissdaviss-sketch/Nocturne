@@ -7,6 +7,13 @@ var doorways: Array[Vector3] = []
 const STEEL := Color("293d41")
 const BRASS := Color("b6925e")
 const WARM := Color("d9cbb0")
+# Entrances are authored around the fixed investigation props, with a clear
+# landing/flight apron beyond the wall. Widths are physical centimetres.
+const ENTRIES = [
+ [[55.0,740.0],[194.0,740.0]],
+ [[889.0,1150.0,1580.0],[889.0,1240.0,1588.0]],
+ [[1750.0,2110.0],[1750.0,2400.0]]
+]
 
 func build(w: Node3D) -> void:
  name = "CompartmentLayout"
@@ -21,12 +28,13 @@ func build(w: Node3D) -> void:
    for i in range(bounds.size()-1):
     var lo: float = bounds[i]
     var hi: float = bounds[i+1]
-    var entry: float = (lo+hi)*0.5
-    # The dining entry avoids the occupied chair backs near the cup.
-    if car == 1 and i == 1: entry = 1125.0
-    rooms.append({"car":car,"side":side,"lo":lo,"hi":hi,"entry":entry})
+    var entry: float = ENTRIES[car][0 if side == -1 else 1][i]
+    var width := 84.0 if (car == 0 and side == 1 and i == 0) or (car == 1 and i == 0) or (car == 1 and side == 1 and i == 2) else 92.0
+    var parking_side := 1.0 if hi-entry-width*0.5 >= 56.0 else -1.0
+    var parked := entry+parking_side*(width*0.5+30.0)
+    rooms.append({"car":car,"side":side,"lo":lo,"hi":hi,"entry":entry,"width":width,"parked":parked})
     doorways.append(Vector3(side*CORRIDOR_EDGE,105,entry))
-    compartment(w,car,side,lo,hi,entry,titles[car][i])
+    compartment(w,car,side,lo,hi,entry,titles[car][i],width,parked)
    for i in range(1,bounds.size()-1):
     var z: float = bounds[i]
     w.box(Vector3(side*282.5,148,z),Vector3(455,296,5),STEEL,true,self)
@@ -38,21 +46,23 @@ func build(w: Node3D) -> void:
    for z in range(50,790,120):
     w.box(Vector3(x,278,car*840+z),Vector3(9,9,3),BRASS,true,self,0.7)
 
-func compartment(w: Node3D, car: int, side: int, lo: float, hi: float, entry: float, title: String) -> void:
+func compartment(w: Node3D, car: int, side: int, lo: float, hi: float, entry: float, title: String, width: float = 92.0, parked: float = 0.0) -> void:
  var x := side*CORRIDOR_EDGE
  var finish := Color("50372a") if car == 0 else Color("294b3e")
  if car == 1: finish = Color("4c3026")
- # Solid wall sections and lintel leave a real 92 cm wide, 222 cm high door.
- for span in [Vector2(lo,entry-46),Vector2(entry+46,hi)]:
+ # Solid wall sections and lintel leave the authored width and 222 cm height.
+ var half := width*0.5
+ for span in [Vector2(lo,entry-half),Vector2(entry+half,hi)]:
   w.box(Vector3(x,148,(span.x+span.y)*0.5),Vector3(5,296,span.y-span.x),finish,true,self).material_override = w.cabin_finish(2,finish)
- w.box(Vector3(x,259,entry),Vector3(5,74,92),STEEL,true,self)
- for dz in [-47,47]:
+ w.box(Vector3(x,259,entry),Vector3(5,74,width),STEEL,true,self)
+ for dz in [-half-1,half+1]:
   w.box(Vector3(x,112,entry+dz),Vector3(9,224,3),BRASS,true,self,0.65)
- w.box(Vector3(x,223,entry),Vector3(9,3,98),BRASS,true,self,0.65)
+ w.box(Vector3(x,223,entry),Vector3(9,3,width+6),BRASS,true,self,0.65)
  # Parked sliding leaf, visibly retracted beside the open portal.
- w.box(Vector3(x+side*5,108,entry+79),Vector3(3,211,54),STEEL,true,self)
+ w.box(Vector3(x+side*5,108,parked),Vector3(3,211,54),STEEL,true,self)
  for h in [18,194]:
-  w.box(Vector3(x-side*3,h,(lo+hi)*0.5),Vector3(1,2,hi-lo),BRASS,true,self,0.6)
+  for span in [Vector2(lo,entry-half),Vector2(entry+half,hi)]:
+   w.box(Vector3(x-side*3,h,(span.x+span.y)*0.5),Vector3(1,2,span.y-span.x),BRASS,true,self,0.6)
  var plaque: Label3D = w.sign_text(title,Vector3(x-side*5,251,entry),0.10,WARM,self)
  plaque.rotation.y = -side*PI/2
  w.box(Vector3(x-side*4,251,entry),Vector3(1,22,104),STEEL,true,self)
@@ -70,8 +80,8 @@ func sleeper(w: Node3D, side: int, lo: float, hi: float) -> void:
  var z := (lo+hi)*0.5
  preload("res://scripts/sleeping_assets.gd").build_bed(w,self,Vector3(side*415,0,z))
  preload("res://scripts/cabinet_assets.gd").wardrobe(w,self,Vector3(side*230,0,hi-30))
- w.table(Vector3(side*242,0,lo+75),75,65)
- w.seat(Vector3(side*242,0,lo+145),Color("204d49"))
+ w.table(Vector3(side*300,0,lo+75),75,65)
+ w.seat(Vector3(side*300,0,lo+145),Color("204d49"))
 
 func hospitality(w: Node3D, side: int, lo: float, hi: float) -> void:
  var length := hi-lo

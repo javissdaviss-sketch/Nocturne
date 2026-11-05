@@ -2,7 +2,11 @@
 config_version=5
 
 [application]
-config/name="A Fly on the Night Train"
+config/name="Fly Spy With My Little Eye"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="godot/app_userdata/A Fly on the Night Train"
+config/custom_user_dir_name.windows="Godot/app_userdata/A Fly on the Night Train"
+config/custom_user_dir_name.macos="Godot/app_userdata/A Fly on the Night Train"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://assets/icon.svg"

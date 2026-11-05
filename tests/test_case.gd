@@ -63,7 +63,9 @@ func run() -> void:
   var entry: float = room.entry
   query = PhysicsRayQueryParameters3D.create(Vector3(0,105,entry),Vector3(side*75,105,entry),1)
   check(space.intersect_ray(query).is_empty(),"Room doorway connects to corridor: "+str(room))
-  var wall_z: float = room.lo+8
+  var before_width: float = room.entry-float(room.width)*0.5-room.lo
+  var after_width: float = room.hi-room.entry-float(room.width)*0.5
+  var wall_z: float = room.lo+before_width*0.5 if before_width>after_width else room.hi-after_width*0.5
   query = PhysicsRayQueryParameters3D.create(Vector3(0,150,wall_z),Vector3(side*70,150,wall_z),1)
   check(not space.intersect_ray(query).is_empty(),"Room wall blocks flight outside doorway")
   query = PhysicsRayQueryParameters3D.create(Vector3(side*300,10,entry),Vector3(side*300,-10,entry),1)

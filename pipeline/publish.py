@@ -41,7 +41,7 @@ def main() -> None:
     existing = subprocess.run(["gh", "release", "view", tag, "--repo", a.repository], capture_output=True)
     if existing.returncode == 0: raise SystemExit("Release already exists; use a new version")
     subprocess.run(["gh", "release", "create", tag, "--repo", a.repository, "--target", a.commit,
-        "--draft", "--title", "Nocturne " + a.version,
+        "--draft", "--title", "Fly Spy With My Little Eye " + a.version,
         "--notes", "Tested Windows build. Existing Nocturne desktop launchers update automatically on their next launch. New players: download Nocturne-Setup-Windows.zip."], check=True)
     subprocess.run(["gh", "release", "upload", tag, "--repo", a.repository] + [str(a.directory / name) for name in ASSETS], check=True)
     subprocess.run(["gh", "release", "edit", tag, "--repo", a.repository, "--draft=false", "--latest"], check=True)

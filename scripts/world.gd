@@ -64,7 +64,7 @@ func cabin_finish(kind: int, color: Color) -> ShaderMaterial:
  material.shader = CABIN_FINISH
  material.set_shader_parameter("finish",kind)
  material.set_shader_parameter("finish_color",color)
- if kind == 2: material.set_shader_parameter("wood_texture",TABLE_TEXTURE)
+ if kind in [0,2]: material.set_shader_parameter("wood_texture",TABLE_TEXTURE)
  if kind == 3: material.set_shader_parameter("brocade_texture",BROCADE_TEXTURE)
  materials[key] = material
  return material
@@ -241,10 +241,7 @@ func carriage(index: int) -> void:
  var z := float(index)*840.0
  var shade := Color("432d25") if index != 2 else Color("233d35")
  box(Vector3(0,-5,z+400),Vector3(1020,10,800),WOOD).material_override = cabin_finish(0,Color("66503c"))
- for x in range(-500,501,20):
-  box(Vector3(x,0.15,z+400),Vector3(0.65,0.3,800),Color("866a4b"),false)
- for j in range(12):
-  box(Vector3(0,0.25,z+j*68+10),Vector3(1020,0.25,0.5),Color("241f1e"),false)
+ # Floor joints belong to the finish, not raised bars that catch a 6 mm fly.
  box(Vector3(0,0.8,z+400),Vector3(110,1.2,780),Color.WHITE).material_override = runner_finish(index)
  for side in [-1,1]:
   box(Vector3(side*58,1.5,z+400),Vector3(1,0.4,780),GOLD,false)
@@ -322,7 +319,7 @@ func table(p: Vector3, width: float = 72, depth: float = 72) -> void:
  model.position = p
  preload("res://scripts/furniture_models.gd").table(self,model,width,depth)
 
-func seat(p: Vector3, color: Color = TEAL) -> void:
+func seat(p: Vector3, color: Color = TEAL) -> Node3D:
  var model := Node3D.new()
  model.name = "TuftedParlourChair"
  add_child(model)
@@ -368,6 +365,7 @@ func seat(p: Vector3, color: Color = TEAL) -> void:
   var xa := -27.0+segment*4.5
   var xb := xa+4.5
   line(p+Vector3(xa,92.7-4.5*pow(xa/27,2),23),p+Vector3(xb,92.7-4.5*pow(xb/27,2),23),0.30,GOLD,model)
+ return model
 
 func leaf_material(dark: bool) -> StandardMaterial3D:
  var key := "palm_leaf_dark" if dark else "palm_leaf_light"
@@ -455,7 +453,8 @@ func residential() -> void:
   plant(Vector3(-131,0,z+130),130,38)
  table(Vector3(-104,0,285),91,65)
  table(Vector3(107,0,285),90,90)
- preload("res://scripts/furniture_models.gd").build_chaise(self,self,Vector3(107,0,95))
+ var chaise := preload("res://scripts/furniture_models.gd").build_chaise(self,self,Vector3(160,0,70))
+ chaise.rotation.y = PI/2
  # Writing desk and handwritten note.
  box(Vector3(-102,77,285),Vector3(22,0.5,29),Color("e7d8b2"))
  var note := sign_text("Mara —\nReturn the cuttings.\nOr I report you at dawn.\n— Elias",Vector3(-102,77.4,285),0.055,Color("493e3c"))
@@ -467,27 +466,16 @@ func residential() -> void:
  table(Vector3(107,0,655),94,67)
  HeroAssets.terminal(self,self,Vector3(102,83,655))
  HeroAssets.framed_photo(self,self,Vector3(-102,77,470))
- plant(Vector3(165,0,175),160,44)
+ plant(Vector3(240,0,275),160,44)
  plant(Vector3(133,0,600),160,44)
 
 func dining() -> void:
  for z in [1050,1250,1450]:
-  table(Vector3(-101,0,z),101,102)
-  seat(Vector3(-110,0,z-75),TEAL)
-  var chair := Node3D.new()
-  add_child(chair)
-  chair.position = Vector3(-110,0,z+75)
-  # Reverse chair using a locally transformed group.
-  var count := get_child_count()
-  seat(Vector3(-110,0,z+75),TEAL)
-  var generated := get_children().slice(count)
-  for item in generated:
-   if item is Node3D:
-    var old: Vector3 = item.position
-    remove_child(item)
-    chair.add_child(item)
-    item.position = Vector3(old.x+110,old.y,old.z-z-75)
-  chair.rotation.y = PI
+  table(Vector3(-110,0,z),101,102)
+  for end in [-1,1]:
+   var chair := seat(Vector3(-220,0,z+end*70),TEAL)
+   var toward_table := Vector3(-110,0,z)-chair.position
+   chair.rotation.y = atan2(-toward_table.x,-toward_table.z)
   mesh_obj(self,CeramicProfiles.plate_mesh(),Vector3(-101,78,z),CREAM)
   for px in [-139,-62]:
    line(Vector3(px,78,z-17),Vector3(px,78,z+17),0.6,GOLD)
@@ -498,19 +486,19 @@ func dining() -> void:
  HeroAssets.covered_scene(self,self,Vector3(-100,0,1345))
  # Service counter and cabinet.
  # Hollow cabinet: fly-sized cable access beneath the front door.
- HeroAssets.rounded(self,self,Vector3(159,43,1480),Vector3(4,86,137),0.5,Color("214b49"))
- for side_z in [1412,1548]:
+ HeroAssets.rounded(self,self,Vector3(159,43,1476),Vector3(4,86,129),0.5,Color("214b49"))
+ for side_z in [1412,1540]:
   var end_panel: MeshInstance3D = preload("res://scripts/cabinet_assets.gd").framed_panel(self,self,Vector3(122,43,side_z),Vector3(77,86,4))
   if side_z > 1480: end_panel.rotation.y = PI
- HeroAssets.rounded(self,self,Vector3(122,2.5,1480),Vector3(77,5,137),0.8,Color("214b49"))
- HeroAssets.rounded(self,self,Vector3(122,35,1480),Vector3(77,3,137),0.4,Color("214b49"))
- HeroAssets.rounded(self,self,Vector3(122,88,1480),Vector3(83,5,143),1.2,Color("bea783"))
+ HeroAssets.rounded(self,self,Vector3(122,2.5,1476),Vector3(77,5,129),0.8,Color("214b49"))
+ HeroAssets.rounded(self,self,Vector3(122,35,1476),Vector3(77,3,129),0.4,Color("214b49"))
+ HeroAssets.rounded(self,self,Vector3(122,88,1476),Vector3(83,5,135),1.2,Color("bea783"))
  cabinet_door = preload("res://scripts/cabinet_assets.gd").framed_panel(self,self,Vector3(82,47,1460),Vector3(73,68,3))
  cabinet_door.rotation.y = PI/2
  # Stationary frame closes the remainder of the front, leaving only the authored
  # cable opening below Y13 and the actual moving door when it is released.
  HeroAssets.rounded(self,self,Vector3(82,47,1418.75),Vector3(3,68,9.4),0.3,Color("4d3328"))
- var fixed_front: MeshInstance3D = preload("res://scripts/cabinet_assets.gd").framed_panel(self,self,Vector3(82,47,1521.25),Vector3(49.4,68,3))
+ var fixed_front: MeshInstance3D = preload("res://scripts/cabinet_assets.gd").framed_panel(self,self,Vector3(82,47,1517.25),Vector3(41.4,68,3))
  fixed_front.rotation.y = PI/2
  HeroAssets.rounded(self,self,Vector3(82,83.5,1480),Vector3(4,5,132),0.6,Color("4d3328"))
  # Tiny cable duct is a real gap beneath the door, with an accessible contact.
@@ -520,14 +508,14 @@ func dining() -> void:
  box(Vector3(104,11,1460),Vector3(1.2,0.4,1.2),Color("72d9bc"),false,self,0,1)
  # Bottle stands behind cabinet door.
  HeroAssets.chemical_bottle(self,self,Vector3(121,36.5,1460))
- for z in [940,1580]: plant(Vector3(127,0,z),175,40)
+ for z in [940,1438]: plant(Vector3(250,0,z),175,40)
  for z in [1095,1320]:
   HeroAssets.side_table(self,self,Vector3(135,0,z))
 
 func conservatory() -> void:
  for side in [-1,1]:
   for z in [1770,1950,2150,2360]:
-   var palm_position := Vector3(side*125,0,z)
+   var palm_position := Vector3(side*(245 if z == 1770 or z == 2150 or z == 2360 else 125),0,z)
    if side == 1 and z == 2150:
     # Keep the mature crown and its pot clear of Lian's head and the next bed.
     palm_position = Vector3(205,0,2140)
@@ -537,17 +525,18 @@ func conservatory() -> void:
    add_child(planter)
    # The middle bed ends before the compartment partition, leaving the
    # botanist's standing space clear without moving the person or hotspot.
-   planter.build_planter(Vector3(side*(165 if z == 2070 else 134),0,2008 if z == 2070 else z))
+   var planter_x := 165 if z == 2070 else (240 if z == 1880 or (side == 1 and z == 2260) else 134)
+   planter.build_planter(Vector3(side*planter_x,0,2008 if z == 2070 else z))
    planter.rotation.y = PI/2
    planter.scale = Vector3(0.30 if z == 2070 else 0.95,0.78,0.725)
  for z in [1830,2080,2290]:
-  plant(Vector3(-89,0,z),110,29)
+  plant(Vector3(-245 if z == 2080 else -89,0,z),110,29)
   if z == 2080:
    # A compact specimen in the rear margin replaces the pot through Lian's feet.
-   plant(Vector3(87,0,2400),135,20)
+   plant(Vector3(245,0,2400),135,20)
   else:
-   plant(Vector3(97,0,z+40),135,31)
- table(Vector3(104,0,1905),95,100)
+   plant(Vector3(245 if z == 2290 else 97,0,z+40),135,31)
+ table(Vector3(108,0,1905),95,100)
  box(Vector3(102,80,1905),Vector3(17,0.5,23),Color("d9c399"))
  var tag := sign_text("OR-031 / M. SABLE\nLIVING SPECIMENS\nLEAF > MOON > DROP",Vector3(102,80.4,1905),0.032,Color("343f36"))
  tag.rotation_degrees.x = -90

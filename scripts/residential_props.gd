@@ -38,7 +38,7 @@ func luggage_rack(side: int, z: float, luggage_color: Color) -> void:
  suitcase(Vector3(side*143.0,235.5,z),Vector3(31,18,47),luggage_color)
 
 func hat_and_umbrella_stand() -> void:
- var p := Vector3(139,0.4,737)
+ var p := Vector3(300,0.4,737)
  cyl(p+Vector3(0,1.5,0),25,3.0,EBONY)
  cyl(p+Vector3(0,4.5,0),15,3.0,BRASS,true)
  rod(p+Vector3(0,5,0),p+Vector3(0,171,0),2.5,LEATHER)

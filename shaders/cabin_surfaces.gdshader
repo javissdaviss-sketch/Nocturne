@@ -9,8 +9,9 @@ varying vec3 local_position;
 varying vec3 local_normal;
 void vertex() {
  world_position = (MODEL_MATRIX * vec4(VERTEX,1.0)).xyz;
- local_position = VERTEX;
- local_normal = NORMAL;
+ vec3 physical_scale = vec3(length(MODEL_MATRIX[0].xyz),length(MODEL_MATRIX[1].xyz),length(MODEL_MATRIX[2].xyz));
+ local_position = VERTEX * physical_scale;
+ local_normal = normalize(NORMAL / max(physical_scale,vec3(0.0001)));
 }
 float hash21(vec2 p) {return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
 vec3 relief_normal(vec3 position, vec3 normal, float height) {
@@ -28,12 +29,17 @@ void fragment() {
  if (finish == 0) {
   float plank = floor((p.x+170.0)/20.0);
   float row = floor((p.y+mod(plank,2.0)*42.0)/84.0);
-  float grain = sin(p.x*8.0+sin(p.y*0.027+plank)*2.3+sin(p.x*0.7)*0.7);
-  float fine = sin(p.x*31.0+sin(p.y*0.019)*3.0)*(1.0-smoothstep(0.5,2.0,fwidth(p.x)*31.0));
-  shade = 0.88+grain*0.055+fine*0.025+hash21(vec2(plank,row))*0.22;
+  vec2 uv = vec2(fract((p.x+510.0)/20.0),p.y/190.0+hash21(vec2(plank,0.0)));
+  vec3 grain = texture(wood_texture,uv).rgb;
+  float figure = sqrt(max(dot(grain,vec3(0.30,0.59,0.11))*4.0,0.0001));
+  shade = 0.67+figure*0.70+hash21(vec2(plank,row))*0.10;
   float seam = min(mod(p.y+mod(plank,2.0)*42.0,84.0),84.0-mod(p.y+mod(plank,2.0)*42.0,84.0));
-  shade *= mix(0.58,1.0,smoothstep(0.05,0.16,seam));
-  ROUGHNESS = 0.48+grain*0.06;
+  float across = min(mod(p.x+510.0,20.0),20.0-mod(p.x+510.0,20.0));
+  shade *= mix(0.62,1.0,smoothstep(0.015,0.09,min(seam,across)));
+  ROUGHNESS = 0.52-figure*0.08;
+  CLEARCOAT = 0.10;
+  CLEARCOAT_ROUGHNESS = 0.45;
+  NORMAL = relief_normal(VERTEX,NORMAL,figure*0.025);
  } else if (finish == 1) {
   // Fine cloth; actual model seams and tufts supply the tailoring.
   vec2 cloth = vec2(world_position.x,world_position.y+world_position.z);
@@ -49,8 +55,8 @@ void fragment() {
   vec3 yz = texture(wood_texture,local_position.zy/vec2(95.0,190.0)).rgb;
   vec3 xz = texture(wood_texture,local_position.xz/vec2(95.0,190.0)).rgb;
   vec3 xy = texture(wood_texture,local_position.xy/vec2(95.0,190.0)).rgb;
-  float figure = clamp((yz*blend.x+xz*blend.y+xy*blend.z).r*4.0,0.0,1.0);
-  shade = mix(0.70,1.17,figure);
+  float figure = sqrt(max(dot(yz*blend.x+xz*blend.y+xy*blend.z,vec3(0.30,0.59,0.11))*4.0,0.0001));
+  shade = 0.65+0.80*figure;
   ROUGHNESS = mix(0.49,0.39,figure);
   CLEARCOAT = 0.18;
   CLEARCOAT_ROUGHNESS = 0.42;

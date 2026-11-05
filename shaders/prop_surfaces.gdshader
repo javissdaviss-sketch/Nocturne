@@ -2,7 +2,7 @@ shader_type spatial;
 uniform vec4 color : source_color = vec4(0.4,0.25,0.15,1.0);
 uniform int finish = 0; // leather, paper, linen, polished wood, bread crust
 varying vec3 p;
-void vertex() { p = VERTEX; }
+void vertex() { p = VERTEX*vec3(length(MODEL_MATRIX[0].xyz),length(MODEL_MATRIX[1].xyz),length(MODEL_MATRIX[2].xyz)); }
 float hash(vec3 q) { return fract(sin(dot(q,vec3(12.9898,78.233,36.425)))*43758.5453); }
 void fragment() {
  float fine = hash(floor(p*24.0));

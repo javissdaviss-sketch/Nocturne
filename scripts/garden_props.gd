@@ -29,11 +29,11 @@ func build() -> void:
  # Coiled hose and brass tap stay on the lower outer panel, not in the aisle.
  # The winding is one continuous round rubber hose, hung on a cast cradle.
  meshes["hose_coil"] = hose_mesh()
- instance("hose_coil",Vector3(-165,62,2120),Vector3.ONE,Color("354c3e"))
- for y in [49,75]: rod(Vector3(-166,y,2107),Vector3(-166,y,2133),1.2,BRASS,true)
- cyl(Vector3(-164,77,2120),3.0,5.0,BRASS,true)
- rod(Vector3(-164,75,2120),Vector3(-158,75,2120),1.8,BRASS,true)
- box(Vector3(-162,68,2120),Vector3(1,1,30),BRASS,true)
+ instance("hose_coil",Vector3(-165,62,2180),Vector3.ONE,Color("354c3e"))
+ for y in [49,75]: rod(Vector3(-166,y,2167),Vector3(-166,y,2193),1.2,BRASS,true)
+ cyl(Vector3(-164,77,2180),3.0,5.0,BRASS,true)
+ rod(Vector3(-164,75,2180),Vector3(-158,75,2180),1.8,BRASS,true)
+ box(Vector3(-162,68,2180),Vector3(1,1,30),BRASS,true)
  finish_batches()
 
 func watering_can(p: Vector3) -> void:
