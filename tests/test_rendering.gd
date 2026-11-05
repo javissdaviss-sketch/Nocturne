@@ -10,6 +10,13 @@ func run() -> void:
  root.size = Vector2i(640,400)
  var world = load("res://scripts/world.gd").new()
  root.add_child(world)
+ var coverage: Dictionary = world.get_meta("material_coverage",{})
+ print("REFERENCE MATERIAL COVERAGE: ",coverage)
+ for kind in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]:
+  if int(coverage.get(kind,0)) == 0:
+   printerr("FAIL: reference material family missing from world: ",kind)
+   quit(1)
+   return
  var camera := Camera3D.new()
  camera.near = 0.08
  camera.far = 6000

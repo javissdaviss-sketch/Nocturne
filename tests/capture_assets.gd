@@ -87,6 +87,7 @@ func run() -> void:
     planter.build_planter(Vector3.ZERO)
     scale = 230
     target.y = 33
+  preload("res://scripts/material_library.gd").apply(subject)
   for angle in ["three-quarter","side","clay"]:
    if angle == "clay":
     var material := StandardMaterial3D.new()

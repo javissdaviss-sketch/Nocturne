@@ -8,7 +8,6 @@ const LEAF_MID := Color("3d6b43")
 const LEAF_YOUNG := Color("687f48")
 const Crafted = preload("res://scripts/crafted_geometry.gd")
 const GardenFixtures = preload("res://scripts/garden_fixture_geometry.gd")
-const LEAF_SHADER := "shader_type spatial; render_mode cull_disabled; uniform vec4 leaf_color : source_color; void fragment(){ float rib=1.0-smoothstep(0.008,0.018,abs(UV.x-0.5)); float vein=pow(max(0.0,cos((UV.y-abs(UV.x-0.5)*0.65)*75.0)),18.0); vein*=1.0-smoothstep(0.5,1.5,fwidth(UV.y)*75.0); ALBEDO=leaf_color.rgb*(0.93+0.15*rib+0.055*vein); ROUGHNESS=0.68; }"
 
 func populate(side: int, lo: float, hi: float) -> void:
  name = "LivingCollection"
@@ -124,10 +123,5 @@ func material_id(color: Color, metal: bool, finish: int = -1) -> String:
  var key := super.material_id(color,metal,finish)
  if color in [LEAF_DARK,LEAF_MID,LEAF_YOUNG]:
   if not materials[key] is ShaderMaterial:
-   var shader := Shader.new()
-   shader.code = LEAF_SHADER
-   var material := ShaderMaterial.new()
-   material.shader = shader
-   material.set_shader_parameter("leaf_color",color)
-   materials[key] = material
+   materials[key] = preload("res://scripts/material_library.gd").make(14,color)
  return key

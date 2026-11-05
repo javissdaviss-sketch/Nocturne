@@ -24,6 +24,7 @@ func count_nodes(node: Node) -> int:
  return result
 
 func bake(model: Node3D, filename: String) -> void:
+ preload("res://scripts/material_library.gd").apply(model)
  Solids.new().build(model)
  # The scene is usable without executing a generator, with embedded custom meshes.
  model.set_script(null)

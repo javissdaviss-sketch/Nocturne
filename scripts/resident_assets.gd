@@ -92,11 +92,7 @@ static func cloth_materials(parent: Node, coat: Color) -> void:
    if color in cloth_colors:
     var key := "cloth"+str(color)
     if not materials.has(key):
-     var fabric := ShaderMaterial.new()
-     fabric.shader = preload("res://shaders/cabin_surfaces.gdshader")
-     fabric.set_shader_parameter("finish",1)
-     fabric.set_shader_parameter("finish_color",color)
-     materials[key] = fabric
+     materials[key] = preload("res://scripts/material_library.gd").make(6,color)
     node.material_override = materials[key]
   cloth_materials(node,coat)
 
@@ -141,6 +137,7 @@ static func face(parent: Node3D, hair: Color) -> void:
   add(parent,ellipsoid(Vector3(0.75,3.4,1.8)),Vector3(side*11.7,152.7,-0.2),Color("97735e"))
   var x: float = side*4.2
   var eye := Node3D.new()
+  eye.name = "EyeOptics"
   parent.add_child(eye)
   eye.position = Vector3(x,155.8,-8.8)
   eye.rotation.y = -side*0.35

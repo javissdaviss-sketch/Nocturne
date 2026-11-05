@@ -35,6 +35,7 @@ func run() -> void:
    model = Sleeping.build_bed(world,world,Vector3.ZERO)
   else:
    model = Sleeping.build_bedside(world,world,Vector3.ZERO)
+  preload("res://scripts/material_library.gd").apply(model)
   SolidGeometry.new().build(model)
   own_branch(model,model)
   var expected := counts(model)

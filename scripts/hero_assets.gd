@@ -274,9 +274,9 @@ static func dispatch_cover(w: Node3D, parent: Node3D, p: Vector3) -> MeshInstanc
 
 static func ledger(w: Node3D, parent: Node3D, p: Vector3) -> void:
  var leather := Color("613d35")
- rounded(w,parent,p,Vector3(25,1.1,29),0.35,leather)
- rounded(w,parent,p+Vector3(0,0.8,0),Vector3(24,0.9,27.8),0.25,Color("bdae91"))
- rounded(w,parent,p+Vector3(0,1.45,0),Vector3(25.3,0.35,29),0.15,leather)
+ rounded(w,parent,p,Vector3(25,1.1,29),0.35,leather).material_override = preload("res://scripts/material_library.gd").make(5,leather)
+ rounded(w,parent,p+Vector3(0,0.8,0),Vector3(24,0.9,27.8),0.25,Color("bdae91")).material_override = preload("res://scripts/material_library.gd").make(13,Color("bdae91"))
+ rounded(w,parent,p+Vector3(0,1.45,0),Vector3(25.3,0.35,29),0.15,leather).material_override = preload("res://scripts/material_library.gd").make(5,leather)
  for x in [-11.4,11.4]: rounded(w,parent,p+Vector3(x,1.65,0),Vector3(0.12,0.1,26),0.04,GOLD,0.7)
  for z in [-13,13]: rounded(w,parent,p+Vector3(0,1.65,z),Vector3(22.8,0.1,0.12),0.04,GOLD,0.7)
  for y in [0.5,0.7,0.9,1.1]:

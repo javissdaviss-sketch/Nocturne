@@ -66,6 +66,7 @@ func build_asset(id: String) -> Node3D:
  builder.finish_batches()
  # The baked library contains normal scene nodes and resources, not generators.
  builder.set_script(null)
+ preload("res://scripts/material_library.gd").apply(model)
  SolidGeometry.new().build(model)
  own_branch(model,model)
  return model

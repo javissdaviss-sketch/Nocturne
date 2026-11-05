@@ -63,6 +63,7 @@ func run() -> void:
    "data_slate": Hero.data_slate(w,model,Vector3.ZERO)
    "covered_scene": Hero.covered_scene(w,model,Vector3.ZERO)
    "evidence_cup": Hero.evidence_cup(w,model,Vector3.ZERO)
+  preload("res://scripts/material_library.gd").apply(model)
   preload("res://scripts/solid_geometry.gd").new().build(model)
   own_branch(model,model)
   var expected := model_counts(model)

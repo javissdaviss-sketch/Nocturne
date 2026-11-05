@@ -19,11 +19,7 @@ func run() -> void:
  environment.environment.ambient_light_color = Color.WHITE
  environment.environment.ambient_light_energy = 1.0
  scene.add_child(environment)
- var material := ShaderMaterial.new()
- material.shader = preload("res://shaders/cabin_surfaces.gdshader")
- material.set_shader_parameter("finish",2)
- material.set_shader_parameter("finish_color",Color("66503c"))
- material.set_shader_parameter("wood_texture",preload("res://assets/textures/table_mahogany_albedo.png"))
+ var material := preload("res://scripts/material_library.gd").make(0,Color("80604b"))
  var unbatched: MeshInstance3D
  for x in [-55,55,200]:
   var node := MeshInstance3D.new()

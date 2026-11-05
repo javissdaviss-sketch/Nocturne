@@ -1,11 +1,8 @@
 extends Node3D
 ## Hand-built procedural scenery, centimetre world units. No runtime asset downloads.
+const Finishes = preload("res://scripts/material_library.gd")
 const Data = preload("res://scripts/case_data.gd")
 const LEAF_TEXTURE = preload("res://assets/textures/palm_leaf_albedo.png")
-const TABLE_TEXTURE = preload("res://assets/textures/table_mahogany_albedo.png")
-const BROCADE_TEXTURE = preload("res://assets/textures/botanical_brocade_albedo.png")
-const CABIN_FINISH = preload("res://shaders/cabin_surfaces.gdshader")
-const RUNNER_FINISH = preload("res://shaders/nocturne_runner.gdshader")
 const SolidGeometry = preload("res://scripts/solid_geometry.gd")
 var solid_geometry = SolidGeometry.new()
 var collision_stats: Dictionary = {}
@@ -58,26 +55,10 @@ func mat(c: Color, metal: float = 0.0, glow: float = 0.0) -> StandardMaterial3D:
  return m
 
 func cabin_finish(kind: int, color: Color) -> ShaderMaterial:
- var key := "cabin_%d_%s" % [kind,str(color)]
- if materials.has(key): return materials[key]
- var material := ShaderMaterial.new()
- material.shader = CABIN_FINISH
- material.set_shader_parameter("finish",kind)
- material.set_shader_parameter("finish_color",color)
- if kind in [0,2]: material.set_shader_parameter("wood_texture",TABLE_TEXTURE)
- if kind == 3: material.set_shader_parameter("brocade_texture",BROCADE_TEXTURE)
- materials[key] = material
- return material
+ return Finishes.cabin(kind,color)
 
 func runner_finish(index: int) -> ShaderMaterial:
- var key := "runner_%d" % index
- if materials.has(key): return materials[key]
- var material := ShaderMaterial.new()
- material.shader = RUNNER_FINISH
- material.set_shader_parameter("wool_color",Color("613e39") if index == 2 else Color("234740"))
- material.set_shader_parameter("thread_color",Color("b9985c"))
- materials[key] = material
- return material
+ return Finishes.make(Finishes.Finish.RUG,Color("836655") if index == 2 else Color("627369"),false,true)
 
 func mesh_obj(parent: Node3D, mesh: Mesh, p: Vector3, color: Color, solid: bool = false, metal: float = 0.0, glow: float = 0.0) -> MeshInstance3D:
  var o := MeshInstance3D.new()
@@ -181,6 +162,7 @@ func _ready() -> void:
  add_child(luxe)
  luxe.build_interior(self,rooms)
  make_hotspots()
+ set_meta("material_coverage",Finishes.apply(self,[scenery,rain_windows,atmosphere]))
  collision_stats = solid_geometry.build(self,[scenery,rain_windows,atmosphere])
  var exclusions: Array[Node] = [scenery,rain_windows,atmosphere,cabinet_door,drawer]
  for palm in palms: exclusions.append(palm)
@@ -299,13 +281,7 @@ func carriage(index: int) -> void:
  if index == 2: sign_text("09  →   RESIDENT ACCESS ONLY",Vector3(0,160,z+797),0.25,GOLD)
 
 func table_material() -> ShaderMaterial:
- if materials.has("table_mahogany"): return materials["table_mahogany"]
- var material := ShaderMaterial.new()
- material.shader = CABIN_FINISH
- material.set_shader_parameter("finish",5)
- material.set_shader_parameter("wood_texture",TABLE_TEXTURE)
- materials["table_mahogany"] = material
- return material
+ return Finishes.cabin(5,Color("77503a"))
 
 func table_slab(p: Vector3, size: Vector3) -> void:
  # Retained for callers needing a single softened, veneered slab.
@@ -409,7 +385,7 @@ func palm_rib(parent: Node3D, length: float, lift: float) -> void:
 
 func plant(p: Vector3, height: float = 100, spread: float = 35) -> void:
  var forms = preload("res://scripts/palm_geometry.gd")
- mesh_obj(self,preload("res://scripts/garden_fixture_geometry.gd").pot_mesh(41,27),p,Color("926c53"))
+ mesh_obj(self,preload("res://scripts/garden_fixture_geometry.gd").pot_mesh(41,27),p,Color("926c53")).material_override = Finishes.make(Finishes.Finish.TERRACOTTA,Color("926c53"))
  cyl(p+Vector3(0,28,0),21,2,Color("292e25"),false)
  var crown_height := height*0.83
  var cane := mesh_obj(self,forms.cane(crown_height),p,Color("4e5139"))
@@ -456,7 +432,7 @@ func residential() -> void:
  var chaise := preload("res://scripts/furniture_models.gd").build_chaise(self,self,Vector3(160,0,70))
  chaise.rotation.y = PI/2
  # Writing desk and handwritten note.
- box(Vector3(-102,77,285),Vector3(22,0.5,29),Color("e7d8b2"))
+ box(Vector3(-102,77,285),Vector3(22,0.5,29),Color("e7d8b2")).material_override = Finishes.make(Finishes.Finish.PAPER,Color("e7d8b2"))
  var note := sign_text("Mara —\nReturn the cuttings.\nOr I report you at dawn.\n— Elias",Vector3(-102,77.4,285),0.055,Color("493e3c"))
  note.rotation_degrees.x = -90
  cyl(Vector3(-130,84,292),3,15,GOLD)
@@ -537,7 +513,7 @@ func conservatory() -> void:
   else:
    plant(Vector3(245 if z == 2290 else 97,0,z+40),135,31)
  table(Vector3(108,0,1905),95,100)
- box(Vector3(102,80,1905),Vector3(17,0.5,23),Color("d9c399"))
+ box(Vector3(102,80,1905),Vector3(17,0.5,23),Color("d9c399")).material_override = Finishes.make(Finishes.Finish.PAPER,Color("d9c399"))
  var tag := sign_text("OR-031 / M. SABLE\nLIVING SPECIMENS\nLEAF > MOON > DROP",Vector3(102,80.4,1905),0.032,Color("343f36"))
  tag.rotation_degrees.x = -90
  for j in range(3):

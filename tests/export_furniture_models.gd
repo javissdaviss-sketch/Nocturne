@@ -21,6 +21,7 @@ func run() -> void:
  var names := {"CraftedWalnutTable":"walnut_table","TuftedParlourChair":"parlour_chair","UpholsteredChaise":"chaise"}
  for model_name in names:
   var model := world.get_node(model_name)
+  preload("res://scripts/material_library.gd").apply(model)
   preload("res://scripts/solid_geometry.gd").new().build(model)
   own_branch(model,model)
   var packed := PackedScene.new()

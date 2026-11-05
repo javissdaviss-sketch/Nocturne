@@ -1,5 +1,7 @@
 extends SceneTree
 ## Repeatable art review. Run with a real display and isolated user data.
+class RenderOnlyPhysics extends RefCounted:
+ func build(_root: Node3D, _exclusions: Array[Node] = []) -> Dictionary: return {}
 const World = preload("res://scripts/world.gd")
 func _initialize() -> void:
  call_deferred("run")
@@ -8,6 +10,7 @@ func run() -> void:
   await capture_ui()
   return
  var world := World.new()
+ if "--render-only" in OS.get_cmdline_user_args(): world.solid_geometry = RenderOnlyPhysics.new()
  root.add_child(world)
  print("STATIC BATCHES: ",world.get_meta("interior_batch_stats"))
  var camera := Camera3D.new()

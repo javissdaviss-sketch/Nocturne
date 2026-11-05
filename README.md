@@ -116,3 +116,7 @@ The art remains an original procedural prototype with stylized architecture and 
 The game is now titled **Fly Spy With My Little Eye**. The Nocturne remains the name of the train. Existing update URLs, launcher storage and the original Godot save profile remain compatible. Existing Nocturne desktop shortcuts targeting the installed updater are renamed on first launch; unrelated shortcuts are left alone.
 
 Fourteen room portals now have reserved approach volumes. Wall rails stop at the jambs, door leaves park within their own wall bays, and nonessential furnishings have been moved clear of the openings. Door clearance is checked with full-height overlap volumes and two-way fly-body sweeps. Clue positions and the cable route stay fixed.
+
+## Reference-based surface materials
+
+The four supplied Agatha boards now drive a shared photographic material atlas: mahogany, walnut, aged brass, brushed steel, velvet, leather, linen, damask, wool rugs, plaster, ceramic, marble, terracotta, paper, leaf tissue and skin. Interior surfaces use physical texture scale with separate roughness, metallic, varnish and subtle relief responses. The same finishes are included in the standalone furniture and prop scenes. Glass, glowing screens, palm photos and clue residue retain their authored data. See [material provenance and mapping](assets/textures/MATERIALS.md). This is a texture/material improvement on the current models; the boards remain the visual target for further model work.

@@ -43,11 +43,7 @@ func material_id(color: Color, metal: bool, finish: int = -1) -> String:
  var key := color.to_html()+str(metal)+(str(finish) if finish >= 0 else "")
  if not materials.has(key):
   if finish >= 0:
-   var material := ShaderMaterial.new()
-   material.shader = preload("res://shaders/prop_surfaces.gdshader")
-   material.set_shader_parameter("color",color)
-   material.set_shader_parameter("finish",finish)
-   materials[key] = material
+   materials[key] = preload("res://scripts/material_library.gd").prop(finish,color)
    return key
   var material := StandardMaterial3D.new()
   material.albedo_color = color

@@ -8,16 +8,10 @@ const BRASS := Color("bda374")
 const TEAL := Color("214b47")
 const IVORY := Color("ded4bf")
 static var cache: Dictionary = {}
-static var cloth_materials: Dictionary = {}
 
 static func cloth_material(color: Color) -> ShaderMaterial:
- var key := color.to_html()
- if not cloth_materials.has(key):
-  var material := ShaderMaterial.new()
-  material.shader = preload("res://shaders/sleeping_cloth.gdshader")
-  material.set_shader_parameter("cloth_color",color)
-  cloth_materials[key] = material
- return cloth_materials[key]
+ var finishes = preload("res://scripts/material_library.gd")
+ return finishes.make(finishes.Finish.LINEN if color.get_luminance()>0.40 else finishes.Finish.VELVET,color)
 
 static func rounded(size: Vector3, radius: float) -> ArrayMesh:
  var key := str(size)+str(radius)

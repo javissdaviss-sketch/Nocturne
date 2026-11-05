@@ -40,6 +40,7 @@ func run() -> void:
    "framed_service_door":
     # Canonical front faces -Z; rotate Y by PI/2 for the in-game puzzle door.
     model = Cabinets.framed_panel(world,world,Vector3.ZERO,Vector3(73,68,3))
+  preload("res://scripts/material_library.gd").apply(model)
   SolidGeometry.new().build(model)
   own_branch(model,model)
   var expected := counts(model)
