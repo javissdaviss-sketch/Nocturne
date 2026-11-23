@@ -1,6 +1,6 @@
 # Reference material set
 
-The four user-supplied Agatha cyber-luxe boards are archived under `art/references/`. They are concept references, not UV texture sheets. `cyber_luxe_material_atlas.png` is an original generated albedo atlas made from those references, with sixteen photographed-style material swatches arranged in four equal rows. No labels, scene lighting, furniture pictures or board text are projected into the game.
+The four user-supplied Agatha cyber-luxe concept boards are authoring inputs and are not included in this release. They are concept references, not UV texture sheets. `cyber_luxe_material_atlas.png` is an original generated albedo atlas made from those references, with sixteen photographed-style material swatches arranged in four equal rows. No labels, scene lighting, furniture pictures or board text are projected into the game.
 
 | Row | Left to right | Physical repeat in centimetres |
 | --- | --- | --- |

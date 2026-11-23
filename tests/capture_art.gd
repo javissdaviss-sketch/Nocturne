@@ -28,7 +28,12 @@ func run() -> void:
   ["02-sleeper",Vector3(-183,154,38),Vector3(-404,82,206)],
   ["03-salon",Vector3(-215,145,1010),Vector3(-380,102,1265)],
   ["04-archive",Vector3(-195,155,1725),Vector3(-392,113,1950)],
-  ["05-evidence",Vector3(-73,92,1226),Vector3(-88,82,1250)]
+  ["05-evidence",Vector3(-73,92,1226),Vector3(-88,82,1250)],
+  ["19-fly-at-cup",Vector3(-80,86,1236),Vector3(-88,82,1250),"fly"],
+  ["20-fly-at-salon-window",Vector3(-448,119,1127),Vector3(-500,137,1146),"neon"],
+  ["21-rain-post-06",Vector3(-32,111,280),Vector3(-50.85,105,280)],
+  ["22-rain-post-07",Vector3(32,111,1415),Vector3(50.85,105,1415)],
+  ["23-rain-post-08",Vector3(-32,111,2310),Vector3(-50.85,105,2310)]
  ]
  if "--complete" in OS.get_cmdline_user_args():
   views.append_array([
@@ -53,6 +58,18 @@ func run() -> void:
    camera.fov = 65
    if view[3] == "cabinet": world.unlock_cabinet()
    elif view[3] == "dispatch": world.unlock_dispatch()
+   elif view[3] == "fly" or view[3] == "neon":
+    camera.fov = 58
+    var exterior = world.scenery
+    exterior.set_process(false)
+    var offset := 0.0
+    if view[3] == "neon":
+     for source in exterior.sign_sources:
+      if source.side == -1:
+       offset = fposmod(exterior.SALON_BAY_Z-float(source.z),exterior.PERIOD)
+       break
+    for layer in exterior.layers: layer.position.z = offset
+    exterior.update_salon_spill(offset)
   camera.position = view[1]
   camera.look_at(view[2])
   for frame in range(3): await process_frame
@@ -66,13 +83,18 @@ func run() -> void:
 func capture_ui() -> void:
  var game = load("res://scenes/main.tscn").instantiate()
  root.add_child(game)
+ if game.mode=="loading": await game.investigation_ready
  var output := OS.get_environment("NOCTURNE_ART_OUTPUT")
  if output.is_empty(): output = "/workspace/previews/luxe"
  DirAccess.make_dir_recursive_absolute(output)
  for screen in ["06-title","07-world-notebook","08-inspection"]:
   if screen == "07-world-notebook":
    # Smoke tests cover fresh-world replacement; this harness reuses the scene.
-   game.start_game(false)
+   game.start_game(not FileAccess.file_exists("user://case.json"))
+   if game.mode!="play":
+    push_error("The capture profile has an unreadable save; start with an isolated profile.")
+    quit(2)
+    return
    game.show_notebook("world")
   elif screen == "08-inspection":
    game.fly.position = Vector3(-85,89,1242)

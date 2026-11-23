@@ -21,7 +21,7 @@ A Linux x64 export preset is included for development. After exporting, use `chm
 | WASD | Fly relative to the camera’s horizontal heading |
 | Mouse | Look around |
 | Space / Ctrl | Rise / descend |
-| Shift | Slow precision flight |
+| Shift | Slow precision flight (hold by default; toggle in Settings) |
 | Scroll wheel | Adjust third-person camera distance |
 | E | Inspect or listen; land if no object is nearby |
 | L | Land / take off, including beside evidence |
@@ -66,6 +66,7 @@ godot --headless --path . --editor --import --quit
 godot --headless --path . --script res://tests/test_case.gd
 godot --headless --path . --script res://tests/test_solid_geometry.gd
 godot --headless --path . --script res://tests/test_render_batches.gd
+godot --headless --path . --script res://tests/test_room_furniture.gd
 XDG_DATA_HOME=/tmp/nocturne-solid-tests godot --headless --path . --script res://tests/test_solid_objects.gd
 godot --headless --path . --script res://tests/test_jump.gd
 XDG_DATA_HOME=/tmp/nocturne-atmosphere-tests godot --headless --path . --script res://tests/test_atmosphere.gd

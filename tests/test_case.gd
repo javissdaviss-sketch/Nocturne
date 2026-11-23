@@ -48,7 +48,7 @@ func run() -> void:
  await physics_frame
  await process_frame
  var space: PhysicsDirectSpaceState3D = world.get_world_3d().direct_space_state
- check(world.hotspots.size()==15,"All fifteen physical/listening hotspots exist")
+ check(world.hotspots.size()==21,"Fifteen original hotspots plus optional crate, service stations and three corridor posts exist")
  var render_stats: Dictionary = world.get_meta("interior_batch_stats")
  check(render_stats.sources > render_stats.batches,"Static rendering uses fewer batches than source meshes")
  check(world.cabinet_door.visible and world.drawer.visible,"Puzzle doors keep independent visuals before unlocking")

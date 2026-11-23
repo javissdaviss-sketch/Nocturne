@@ -74,7 +74,12 @@ func capture(label: String) -> void:
 func capture_conversations() -> void:
  var game = load("res://scenes/main.tscn").instantiate()
  root.add_child(game)
- game.start_game(false)
+ if game.mode=="loading": await game.investigation_ready
+ game.start_game(not FileAccess.file_exists("user://case.json"))
+ if game.mode!="play":
+  push_error("The capture profile has an unreadable save; start with an isolated profile.")
+  quit(2)
+  return
  for person in [["13-engineer-conversation","engineer",Vector3(112,135,465)],["14-steward-conversation","steward",Vector3(113,135,1085)],["15-botanist-conversation","botanist",Vector3(112,135,2045)]]:
   if not selected(person[0]): continue
   game.fly.position = person[2]

@@ -5,6 +5,9 @@ const Ceramic = preload("res://scripts/ceramic_profiles.gd")
 const GOLD := Color("bca172")
 const TIMBER := Color("4d3328")
 const IVORY := Color("e0d3b7")
+const VIOLET_FILM := Color("a36ab9")
+const VIOLET_SHARD := Color("b69ac9")
+const FACET_OUTLINE := [Vector2(-0.5,-0.48),Vector2(0.28,-0.5),Vector2(0.55,-0.2),Vector2(0.33,0.5),Vector2(-0.28,0.45),Vector2(-0.55,0.12)]
 
 static func evidence_cup(w: Node3D, parent: Node3D, p: Vector3) -> Node3D:
  var root := Node3D.new()
@@ -48,23 +51,21 @@ static func evidence_cup(w: Node3D, parent: Node3D, p: Vector3) -> Node3D:
  # Small satellite flakes break up the edge without making a regular ring.
  for patch in [Vector4(3.96,4.46,0.22,0.17),Vector4(4.53,4.94,0.19,0.15),Vector4(2.99,4.58,0.17,0.13)]:
   residue_patch(deposits,patch,random)
- var film: MeshInstance3D = w.mesh_obj(root,deposits.commit(),Vector3.ZERO,Color("a36ab9"))
+ var film: MeshInstance3D = w.mesh_obj(root,deposits.commit(),Vector3.ZERO,VIOLET_FILM)
  film.name = "AdheredVioletDeposit"
- var film_material := StandardMaterial3D.new()
- film_material.albedo_color = Color("a36ab9")
- film_material.vertex_color_use_as_albedo = true
- film_material.roughness = 0.79
- film_material.metallic_specular = 0.25
- film.material_override = film_material
- var shards: MeshInstance3D = w.mesh_obj(root,crystals.commit(),Vector3.ZERO,Color("b69ac9"))
+ film.material_override = violet_finish(false)
+ var shards: MeshInstance3D = w.mesh_obj(root,crystals.commit(),Vector3.ZERO,VIOLET_SHARD)
  shards.name = "AngularVioletCrystals"
- var crystal_material := StandardMaterial3D.new()
- crystal_material.albedo_color = Color("b69ac9")
- crystal_material.vertex_color_use_as_albedo = true
- crystal_material.roughness = 0.32
- crystal_material.metallic_specular = 0.48
- shards.material_override = crystal_material
+ shards.material_override = violet_finish(true)
  return root
+
+static func violet_finish(facets: bool) -> StandardMaterial3D:
+ var result := StandardMaterial3D.new()
+ result.albedo_color = VIOLET_SHARD if facets else VIOLET_FILM
+ result.vertex_color_use_as_albedo = true
+ result.roughness = 0.32 if facets else 0.79
+ result.metallic_specular = 0.48 if facets else 0.25
+ return result
 
 static func cup_inner_radius(y: float) -> float:
  # Exact accepted cup profile over the deposit's height range (2.4–6.5 cm).
@@ -125,15 +126,16 @@ static func residue_quad(surface: SurfaceTool, points: Array[Vector3], normals: 
    surface.add_vertex(points[index])
 
 static func residue_crystal(surface: SurfaceTool, angle: float, y: float, width: float, height: float, depth: float, rotation: float, random: RandomNumberGenerator) -> void:
- var outline := [Vector2(-0.5,-0.48),Vector2(0.28,-0.5),Vector2(0.55,-0.2),Vector2(0.33,0.5),Vector2(-0.28,0.45),Vector2(-0.55,0.12)]
  var points: Array[Vector3] = []
- for outline_point in outline:
+ for outline_point in FACET_OUTLINE:
   var offset := Vector2(outline_point.x*width,outline_point.y*height).rotated(rotation)
   points.append(residue_point(angle+offset.x/cup_inner_radius(y),y+offset.y,-0.002))
  for tip in [Vector2(-0.10,-0.25),Vector2(0.12,0.30)]:
   var offset := Vector2(tip.x*width,tip.y*height).rotated(rotation)
   points.append(residue_point(angle+offset.x/cup_inner_radius(y),y+offset.y,depth*(1.0 if points.size() == 6 else 0.75)))
- var center := residue_point(angle,y,depth*0.3)
+ emit_violet_facets(surface,points,residue_point(angle,y,depth*0.3),random)
+
+static func emit_violet_facets(surface: SurfaceTool,points: Array[Vector3],center: Vector3,random: RandomNumberGenerator) -> void:
  for indices in [[0,1,6],[1,2,6],[2,3,7,6],[3,4,7],[4,5,7],[5,0,6,7],[5,4,3,2,1,0]]:
   var face: Array[Vector3] = []
   for index in indices: face.append(points[index])
@@ -220,6 +222,7 @@ static func chemical_bottle(w: Node3D, parent: Node3D, p: Vector3) -> void:
   profile.append(Vector2(3.5-1.8*smoothstep(0,1,t),9.4+3.4*t))
  profile.append_array([Vector2(1.7,14.2),Vector2(1.9,14.35),Vector2(1.9,14.8),Vector2(1.5,15),Vector2(0.01,15)])
  var body: MeshInstance3D = w.mesh_obj(parent,Ceramic.lathe(profile),p,Color("604065"))
+ body.name = "EvidenceBottleGlass"
  var glass := StandardMaterial3D.new()
  glass.albedo_color = Color("342239")
  glass.roughness = 0.08
@@ -236,9 +239,64 @@ static func chemical_bottle(w: Node3D, parent: Node3D, p: Vector3) -> void:
  curved_text(w,parent,p+Vector3(0,9.1,0),"V9",0.18,3.57)
  curved_text(w,parent,p+Vector3(0,7.4,0),"SABLE",0.085,3.57)
  curved_text(w,parent,p+Vector3(0,5.8,0),"BOTANICAL REAGENT",0.02,3.57)
- curved_text(w,parent,p+Vector3(0,5.3,0),"LOT 031 · 30 ml",0.02,3.57)
+ curved_text(w,parent,p+Vector3(0,5.3,0),"BATCH 206",0.02,3.57)
  # A separate sealing ring and moulded base reveal the vessel's construction.
  var band: MeshInstance3D = w.cyl(p+Vector3(0,13.5,0),1.84,0.38,Color("382c30"),false,parent)
+ add_bottle_neck_trace(w,parent,p)
+
+static func bottle_radius(y: float) -> float:
+ # Matching the actual ceramic lathe profile beneath the threading ring.
+ return 3.5-1.8*smoothstep(0.0,1.0,clampf((y-9.4)/3.4,0.0,1.0))
+
+static func bottle_trace_point(angle: float,y: float,offset: float) -> Vector3:
+ var radius := bottle_radius(y)+offset
+ return Vector3(cos(angle)*radius,y,sin(angle)*radius)
+
+static func add_bottle_neck_trace(w: Node3D,parent: Node3D,p: Vector3) -> void:
+ # Fictional visual evidence. Match the cup's facets and colours without
+ # changing either prop's original collision, location or finding radius.
+ const NECK_Y := 13.03
+ var theta := -PI/2.0
+ var random := RandomNumberGenerator.new()
+ random.seed = 206
+ var outline: Array[Vector2] = []
+ for i in range(16):
+  var a := float(i)*TAU/16.0
+  var drift := random.randf_range(0.79,1.08)
+  outline.append(Vector2(cos(a)*0.74,sin(a)*0.34)*drift)
+ var film := SurfaceTool.new()
+ film.begin(Mesh.PRIMITIVE_TRIANGLES)
+ for i in range(outline.size()):
+  for step in range(2):
+   var points: Array[Vector3] = []
+   var norms: Array[Vector3] = []
+   for corner in [Vector2i(i,0),Vector2i((i+1)%outline.size(),0),Vector2i((i+1)%outline.size(),1),Vector2i(i,1)]:
+    var offset: Vector2 = outline[corner.x]*(float(step+corner.y)*0.5)
+    var angle := theta+offset.x/bottle_radius(NECK_Y)
+    points.append(bottle_trace_point(angle,NECK_Y+offset.y,0.037 if step==0 else 0.012))
+    norms.append(Vector3(cos(angle),0,sin(angle)))
+   var shade := random.randf_range(0.87,0.99)
+   residue_quad(film,points,norms,Color(shade,shade,shade))
+ var backed: MeshInstance3D = w.mesh_obj(parent,film.commit(),p,VIOLET_FILM)
+ backed.name = "BottleVioletFilm"
+ backed.set_meta("solid_geometry_exclude",true)
+ backed.material_override = violet_finish(false)
+ var shards := SurfaceTool.new()
+ shards.begin(Mesh.PRIMITIVE_TRIANGLES)
+ for entry in [Vector4(-0.14,13.03,0.36,0.30),Vector4(0.30,13.12,0.23,0.18),Vector4(-0.47,12.94,0.16,0.16)]:
+  var dimensions: Vector4 = entry
+  var angle := theta+dimensions.x/bottle_radius(dimensions.y)
+  var points: Array[Vector3] = []
+  for outline_point in FACET_OUTLINE:
+   var crystal_xy := Vector2(outline_point.x*dimensions.z,outline_point.y*dimensions.w).rotated(-0.34)
+   points.append(bottle_trace_point(angle+crystal_xy.x/bottle_radius(dimensions.y),dimensions.y+crystal_xy.y,0.005))
+  for tip in [Vector3(-0.13,-0.25,0.22),Vector3(0.14,0.30,0.16)]:
+   points.append(bottle_trace_point(angle+tip.x*dimensions.z/bottle_radius(dimensions.y),dimensions.y+tip.y*dimensions.w,tip.z))
+  emit_violet_facets(shards,points,bottle_trace_point(angle,dimensions.y,0.053),random)
+ var crystals: MeshInstance3D = w.mesh_obj(parent,shards.commit(),p,VIOLET_SHARD)
+ crystals.name = "BottleAngularVioletCrystals"
+ crystals.set_meta("solid_geometry_exclude",true)
+ crystals.material_override = violet_finish(true)
 
 static func dispatch_cover(w: Node3D, parent: Node3D, p: Vector3) -> MeshInstance3D:
  # A removable protective case: thin lid and separately joined walls, open below.
@@ -307,6 +365,8 @@ static func curved_text(w: Node3D, parent: Node3D, p: Vector3, content: String, 
 
 static func data_slate(w: Node3D, parent: Node3D, p: Vector3) -> void:
  var slate := Node3D.new()
+ slate.name = "TabletopDataSlate"
+ slate.set_meta("layout_furniture","data_slate")
  parent.add_child(slate)
  slate.position = p
  slate.rotation.y = 0.08
@@ -325,7 +385,13 @@ static func data_slate(w: Node3D, parent: Node3D, p: Vector3) -> void:
  var pen: MeshInstance3D = w.mesh_obj(slate,Ceramic.lathe([Vector2(0.05,0),Vector2(0.4,2),Vector2(0.4,13),Vector2(0.5,13.4),Vector2(0.5,15),Vector2(0.05,15.5)]),Vector3(9.4,0.9,-7),GOLD,false,0.7)
  pen.rotation.x = PI/2
 
-static func covered_scene(w: Node3D, parent: Node3D, p: Vector3) -> void:
+static func covered_scene(w: Node3D, parent: Node3D, p: Vector3) -> Node3D:
+ var tableau := Node3D.new()
+ tableau.name = "QuietTable"
+ parent.add_child(tableau)
+ tableau.position = p
+ # A continuous, opaque sheet at human scale with a gravity-shaped top,
+ # folded over a real upholstered bench. No graphic details are visible.
  var cloth := SurfaceTool.new()
  cloth.begin(Mesh.PRIMITIVE_TRIANGLES)
  for row in range(64):
@@ -336,19 +402,41 @@ static func covered_scene(w: Node3D, parent: Node3D, p: Vector3) -> void:
     for corner in order:
      var u := float(col+corner.x)/32*2-1
      var v := float(row+corner.y)/64*2-1
-     var x := u*24
-     var z := v*52
-     var body := 16*exp(-x*x/180-pow(z-5,2)/850)
-     var head := 13*exp(-x*x/80-pow(z+32,2)/100)
-     var edge := pow(abs(u),10)*12+pow(abs(v),14)*5
-     var fold := sin(u*24+v*3)*0.85*pow(abs(u),3)+sin(v*33)*0.4*pow(abs(v),4)
-     cloth.set_uv(Vector2(u,v)*5)
-     cloth.add_vertex(Vector3(x,31+body+head-edge+fold+thickness,z))
+     cloth.set_uv(Vector2(u*29,v*87))
+     cloth.add_vertex(shroud_point(u,v)+Vector3(0,thickness,0))
  cloth.generate_normals()
- var cover: MeshInstance3D = w.mesh_obj(parent,cloth.commit(),p,IVORY)
+ var cover: MeshInstance3D = w.mesh_obj(tableau,cloth.commit(),Vector3.ZERO,IVORY)
+ cover.name = "FoldedLinen"
  cover.material_override = preload("res://scripts/sleeping_assets.gd").cloth_material(IVORY)
- for x in [-20,20]:
-  rounded(w,parent,p+Vector3(x,25,0),Vector3(3,5,90),1,TIMBER)
-  for z in [-34,34]:
-   w.cyl(p+Vector3(x,12,z),2.8,24,TIMBER,false,parent,2.1)
- for z in [-43,43]: rounded(w,parent,p+Vector3(0,25,z),Vector3(38,5,3),1,TIMBER)
+ var rail: Array[Vector3] = []
+ var radii: Array[float] = []
+ # The turned edge keeps the silhouette from reading as a paper-thin quad.
+ for edge in [Vector4(-1,-1,1,-1),Vector4(1,-1,1,1),Vector4(1,1,-1,1),Vector4(-1,1,-1,-1)]:
+  for index in range(32 if edge.y==edge.w else 64):
+   var t := float(index)/(32 if edge.y==edge.w else 64)
+   rail.append(shroud_point(lerpf(edge.x,edge.z,t),lerpf(edge.y,edge.w,t))-Vector3.UP*0.10)
+   radii.append(0.22)
+ rail.append(rail[0])
+ radii.append(radii[0])
+ var hem: MeshInstance3D = w.mesh_obj(tableau,Geometry.tube(rail,radii,8),Vector3.ZERO,IVORY)
+ hem.material_override = cover.material_override
+ var deck := rounded(w,tableau,Vector3(0,27,0),Vector3(44,6,154),2,Color("2a4a42"))
+ deck.material_override = w.cabin_finish(1,Color("2a4a42"))
+ for x in [-21,21]:
+  rounded(w,tableau,Vector3(x,23,0),Vector3(3,5,155),1,TIMBER)
+  for z in [-64,64]:
+   w.cyl(Vector3(x,10.5,z),2.8,21,TIMBER,false,tableau,2.1)
+   w.cyl(Vector3(x,1.2,z),3,2.4,GOLD,false,tableau,-1,0.62)
+ for z in [-75,75]:
+  rounded(w,tableau,Vector3(0,23,z),Vector3(42,5,3),1,TIMBER)
+ return tableau
+
+static func shroud_point(u: float, v: float) -> Vector3:
+ var x := u*29.0
+ var z := v*87.0
+ var shoulder := 19.0*exp(-pow((x-1.5)/19.0,2)-pow((z+32.0)/32.0,2))
+ var head := 18.0*exp(-pow((x+1.8)/10.0,2)-pow((z+67.0)/13.0,2))
+ var legs := 12.0*exp(-pow(x/13.0,2)-pow((z-37.0)/41.0,2))
+ var fold := sin(u*24.0+v*4.5)*1.3*pow(absf(u),3)+sin(v*31.0+u*3.0)*0.61*pow(absf(v),4)
+ var drape := pow(absf(u),9)*11.0+pow(absf(v),18)*7.0
+ return Vector3(x,31.0+maxf(shoulder,maxf(head,legs))-drape+fold,z)

@@ -8,6 +8,8 @@ const BRASS := Color("b99a62")
 const DARK := Color("172e2c")
 const CYAN := Color("65aca5")
 const Finishes = preload("res://scripts/cabinet_finishes.gd")
+const RoomIdentity = preload("res://scripts/room_identity.gd")
+const MaterialLibrary = preload("res://scripts/material_library.gd")
 const Profiles = preload("res://scripts/crafted_geometry.gd")
 
 static func wardrobe(w: Node3D, parent: Node3D, p: Vector3, size: Vector3 = Vector3(95,224,48)) -> Node3D:
@@ -85,7 +87,7 @@ static func wardrobe(w: Node3D, parent: Node3D, p: Vector3, size: Vector3 = Vect
  _path(w,asset,[Vector3(30,47,-22.9),Vector3(34,47,-22.9),Vector3(34,30,-22.9),Vector3(40,30,-22.9)],0.22,BRASS)
  return asset
 
-static func service_counter(w: Node3D, parent: Node3D, p: Vector3, depth: float, side: int = 1) -> Node3D:
+static func service_counter(w: Node3D, parent: Node3D, p: Vector3, depth: float, side: int = 1, look: Dictionary = {}) -> Node3D:
  var asset := Node3D.new()
  asset.name = "CabinetmakerServiceCounter"
  parent.add_child(asset)
@@ -94,70 +96,151 @@ static func service_counter(w: Node3D, parent: Node3D, p: Vector3, depth: float,
  # final X width 135 and Z length `depth` used by the compartment layout.
  asset.rotation.y = side*PI/2
  var width := maxf(depth,65)
+ var body_tone: Color = look.get("frame",TIMBER)
+ var field_tone: Color = look.get("panel",PANEL)
+ var rim_tone: Color = look.get("stone",Color("b8b19e"))
+ var trim: String = look.get("casework","")
+ asset.set_meta("joinery",trim)
  _wood(w,asset,Vector3(0,47,0),Vector3(width-5,82,130),END_GRAIN,1.2)
  for x in [-width*0.5+8,width*0.5-8]:
   for z in [-54,54]: _turned_foot(w,asset,Vector3(x,0,z),10,4.5)
  for layer in [[10,width,4,135],[13,width-2,3,133],[16,width-5,3,130]]:
-  _wood(w,asset,Vector3(0,layer[0],0),Vector3(layer[1],layer[2],layer[3]),TIMBER,0.6)
+  _wood(w,asset,Vector3(0,layer[0],0),Vector3(layer[1],layer[2],layer[3]),body_tone,0.6)
  # Rounded bullnose worktop, warm stone inset and an inlaid brass perimeter.
- _wood(w,asset,Vector3(0,93,0),Vector3(width+6,5.8,140),TIMBER,1.2)
+ _wood(w,asset,Vector3(0,93,0),Vector3(width+6,5.8,140),body_tone,1.2)
  var stone: MeshInstance3D = w.cushion(Vector3(0,95.85,0),Vector3(width-1,0.3,133),Color("b8b19e"),0.08,asset)
- stone.material_override = Finishes.stone()
+ stone.material_override = Finishes.stone() if trim.is_empty() else MaterialLibrary.make(MaterialLibrary.Finish.MARBLE,rim_tone)
  _rect_horizontal(w,asset,Vector3(0,95.7,0),Vector2(width-5,129),0.25,BRASS)
  var sections := maxi(1,int(width/54))
  var section_width := (width-10)/sections
  for i in range(sections):
   var x := -width*0.5+5+(i+0.5)*section_width
   var panel_width := section_width-4
-  _wood(w,asset,Vector3(x,72,-64.5),Vector3(panel_width,22,3),TIMBER,0.7)
-  _wood(w,asset,Vector3(x,72,-66.1),Vector3(panel_width-7,15,0.8),PANEL,0.3)
+  _wood(w,asset,Vector3(x,72,-64.5),Vector3(panel_width,22,3),body_tone,0.7)
+  _wood(w,asset,Vector3(x,72,-66.1),Vector3(panel_width-7,15,0.8),field_tone,0.3)
   _rect_frame(w,asset,Vector3(x,72,-66.7),Vector2(panel_width-7,15),0.38,BRASS)
   _pull(w,asset,Vector3(x,73,-66.0),minf(16,panel_width*0.45),false)
-  _wood(w,asset,Vector3(x,38,-64.5),Vector3(panel_width,43,3),TIMBER,0.7)
-  var arch := _arch_outline(panel_width-9,26,5)
-  var raised: MeshInstance3D = w.mesh_obj(asset,_extrude(arch,0.8),Vector3(x,22,-66),PANEL)
-  raised.material_override = Finishes.timber(PANEL)
-  _outline(w,asset,arch,Vector3(x,22,-66.7),0.4,BRASS)
+  _wood(w,asset,Vector3(x,38,-64.5),Vector3(panel_width,43,3),body_tone,0.7)
+  if trim.is_empty():
+   var arch := _arch_outline(panel_width-9,26,5)
+   var raised: MeshInstance3D = w.mesh_obj(asset,_extrude(arch,0.8),Vector3(x,22,-66),field_tone)
+   raised.material_override = Finishes.timber(field_tone)
+   _outline(w,asset,arch,Vector3(x,22,-66.7),0.4,BRASS)
+  else:
+   counter_reveal(w,asset,Vector3(x,38,-66.05),panel_width-9,trim,field_tone)
   _pull(w,asset,Vector3(x+panel_width*0.29,43,-66),9,true)
   for y in [25,53]: _hinge(w,asset,Vector3(x-panel_width*0.5+1.2,y,-66),-1)
-  _wood(w,asset,Vector3(x+section_width*0.5,48,-64.6),Vector3(3,70,4),TIMBER,0.6)
+  _wood(w,asset,Vector3(x+section_width*0.5,48,-64.6),Vector3(3,70,4),body_tone,0.6)
   # The reverse is a constructed service face, with modest bevels, panel
   # reveals and rails. No upholstered/cushion profile on broad timber faces.
-  _wood(w,asset,Vector3(x,49,65.3),Vector3(panel_width-3,59,0.8),PANEL,0.25)
+  _wood(w,asset,Vector3(x,49,65.3),Vector3(panel_width-3,59,0.8),field_tone,0.25)
   for y in [18,80]:
-   _wood(w,asset,Vector3(x,y,65.5),Vector3(section_width,3.5,2.2),TIMBER,0.4)
+   _wood(w,asset,Vector3(x,y,65.5),Vector3(section_width,3.5,2.2),body_tone,0.4)
   for sign_x in [-1,1]:
-   _wood(w,asset,Vector3(x+sign_x*(section_width*0.5-1.5),49,65.5),Vector3(3,65,2.2),TIMBER,0.4)
+   _wood(w,asset,Vector3(x+sign_x*(section_width*0.5-1.5),49,65.5),Vector3(3,65,2.2),body_tone,0.4)
  # End panels are framed joinery on both visible ends, with a soft applied bead.
  for sign_x in [-1,1]:
   var end := Node3D.new()
   asset.add_child(end)
   end.position = Vector3(sign_x*(width*0.5-1),48,0)
   end.rotation.y = -sign_x*PI/2
-  _wood(w,end,Vector3.ZERO,Vector3(117,66,2),PANEL,0.6)
-  _rect_frame(w,end,Vector3(0,0,-1.3),Vector2(109,58),0.65,TIMBER)
+  _wood(w,end,Vector3.ZERO,Vector3(117,66,2),field_tone,0.6)
+  _rect_frame(w,end,Vector3(0,0,-1.3),Vector2(109,58),0.65,body_tone)
   _rect_frame(w,end,Vector3(0,0,-1.6),Vector2(104,53),0.3,BRASS)
- # A built-in upper hutch with shaped shelves and cast curved supports.
- for x in [-width*0.5+8,width*0.5-8]:
-  _wood(w,asset,Vector3(x,143,60),Vector3(5,96,7),TIMBER,0.8)
-  _rod(w,asset,Vector3(x,100,55.8),Vector3(x,188,55.8),0.45,BRASS)
- for y in [150,183]:
-  _wood(w,asset,Vector3(0,y,45),Vector3(width-9,4.5,39),TIMBER,0.9)
-  _rod(w,asset,Vector3(-width*0.5+6,y+2.5,26),Vector3(width*0.5-6,y+2.5,26),0.45,BRASS)
-  for x in [-width*0.5+12,width*0.5-12]:
-   var curve: Array[Vector3] = []
-   for i in range(17):
-    var t := float(i)/16
-    curve.append(Vector3(x,y-3-21*(1-t)*(1-t),61-31*t))
-   _path(w,asset,curve,1.1,BRASS)
-   _rod(w,asset,Vector3(x,y-24,61),Vector3(x,y-1,61),1.1,BRASS)
-  # Rear gallery rail and short turned balusters prevent a floating shelf look.
-  _rod(w,asset,Vector3(-width*0.5+8,y+11,61),Vector3(width*0.5-8,y+11,61),0.75,BRASS)
-  for i in range(maxi(2,int(width/24))):
-   var x := -width*0.5+10+float(i)*(width-20)/maxi(1,int(width/24)-1)
-   _rod(w,asset,Vector3(x,y+2.5,61),Vector3(x,y+11,61),0.5,BRASS)
+ # The four compact rooms use differently shaped joinery around their
+ # existing service counter. The base and actual working height stay fixed.
+ if trim.is_empty():
+  # A built-in upper hutch with shaped shelves and cast curved supports.
+  for x in [-width*0.5+8,width*0.5-8]:
+   _wood(w,asset,Vector3(x,143,60),Vector3(5,96,7),body_tone,0.8)
+   _rod(w,asset,Vector3(x,100,55.8),Vector3(x,188,55.8),0.45,BRASS)
+  for y in [150,183]:
+   _wood(w,asset,Vector3(0,y,45),Vector3(width-9,4.5,39),body_tone,0.9)
+   _rod(w,asset,Vector3(-width*0.5+6,y+2.5,26),Vector3(width*0.5-6,y+2.5,26),0.45,BRASS)
+   for x in [-width*0.5+12,width*0.5-12]:
+    var curve: Array[Vector3] = []
+    for i in range(17):
+     var t := float(i)/16
+     curve.append(Vector3(x,y-3-21*(1-t)*(1-t),61-31*t))
+    _path(w,asset,curve,1.1,BRASS)
+    _rod(w,asset,Vector3(x,y-24,61),Vector3(x,y-1,61),1.1,BRASS)
+   # Rear gallery rail and short turned balusters prevent a floating shelf look.
+   _rod(w,asset,Vector3(-width*0.5+8,y+11,61),Vector3(width*0.5-8,y+11,61),0.75,BRASS)
+   for i in range(maxi(2,int(width/24))):
+    var x := -width*0.5+10+float(i)*(width-20)/maxi(1,int(width/24)-1)
+    _rod(w,asset,Vector3(x,y+2.5,61),Vector3(x,y+11,61),0.5,BRASS)
+ else:
+  counter_hutch(w,asset,width,trim,body_tone,field_tone)
+  preload("res://scripts/service_focal_structures.gd").dress(w,asset,width,trim)
  _display(w,asset,Vector3(width*0.5-18,85,-66.7),Vector2(18,7))
+ preload("res://scripts/reception_worktops.gd").dress(w,asset,trim)
  return asset
+
+static func counter_reveal(w: Node3D,asset: Node3D, origin: Vector3,clear: float,role: String,shade: Color) -> void:
+ var st := SurfaceTool.new()
+ st.begin(Mesh.PRIMITIVE_TRIANGLES)
+ var half := clear*0.5
+ match role:
+  "concierge":
+   RoomIdentity.chamfer_slab(st,Vector2.ZERO,Vector2(clear,34),5.4,0.9)
+   for i in range(7):
+    var x := lerpf(-half+3,half-3,float(i)/6.0)
+    RoomIdentity.rail(st,Vector2(x,-13),Vector2(x,11+4*cos(x/half*1.3)),2.5,1.35)
+  "cloak":
+   RoomIdentity.chamfer_slab(st,Vector2.ZERO,Vector2(clear,34),3.0,0.93)
+   for i in range(3):
+    RoomIdentity.rail(st,Vector2(-half+3,4+i*4),Vector2(half-3,4+i*4),1.5,1.25)
+  "pantry":
+   RoomIdentity.chamfer_slab(st,Vector2.ZERO,Vector2(clear,34),2.8,0.8)
+   RoomIdentity.chamfer_slab(st,Vector2.ZERO,Vector2(clear-4.0,28),2.2,1.25)
+   for i in [-1,1]: RoomIdentity.rail(st,Vector2(-half+5,i*10),Vector2(half-5,i*10),1.0,1.84)
+  "steward":
+   RoomIdentity.chamfer_slab(st,Vector2.ZERO,Vector2(clear,34),6.0,0.85)
+   for i in range(5):
+    var x := lerpf(-half+3,half-3,float(i)*0.25)
+    RoomIdentity.rail(st,Vector2(x,-11),Vector2(x,11),2.15,1.55)
+ var face: MeshInstance3D = w.mesh_obj(asset,st.commit(),origin,shade,true)
+ face.name = "FormedCounterReveal"
+ var type := MaterialLibrary.Finish.STEEL if role in ["steward","cloak"] else MaterialLibrary.Finish.WALNUT
+ face.material_override = MaterialLibrary.make(type,shade,false,false,type==MaterialLibrary.Finish.STEEL)
+ face.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+static func counter_hutch(w: Node3D,asset: Node3D,width: float,role: String,frame:Color,field: Color) -> void:
+ # Counter footprint and legacy shelf heights remain in their occupied bay.
+ # Open space beneath each shelf remains usable; these aren't mock boxes.
+ var shelf_rows: Array = {"concierge":[154],"cloak":[144,176],"pantry":[150,180],"steward":[]}[role]
+ var rear := SurfaceTool.new()
+ rear.begin(Mesh.PRIMITIVE_TRIANGLES)
+ if role=="concierge":
+  RoomIdentity.arch(rear,Vector2(0,154),width*0.5-7,26,27,4.2,3.8)
+  for x in [-width*0.5+7,width*0.5-7]:
+   RoomIdentity.rail(rear,Vector2(x,94.2),Vector2(x,154),4.2,4.15)
+ elif role=="cloak":
+  for x in [-width*0.5+8,0.0,width*0.5-8]:
+   RoomIdentity.chamfer_slab(rear,Vector2(x,144),Vector2(5.5,100),1.8,3.8)
+  RoomIdentity.rail(rear,Vector2(-width*0.5+7,192),Vector2(width*0.5-7,192),3.35,4.2)
+ elif role=="pantry":
+  for x in [-width*0.5+8,width*0.5-8]:
+   RoomIdentity.chamfer_slab(rear,Vector2(x,141),Vector2(6.25,94),1.55,3.8)
+  RoomIdentity.rail(rear,Vector2(-width*0.5+7,187),Vector2(width*0.5-7,187),5.4,3.5)
+ else:
+  for x in [-width*0.5+9,width*0.5-9]:
+   RoomIdentity.chamfer_slab(rear,Vector2(x,139),Vector2(8.25,89),2.5,4.1)
+  RoomIdentity.rail(rear,Vector2(-width*0.5+9,184),Vector2(width*0.5-9,184),7.7,3.8)
+  for x in range(-12,13,6): RoomIdentity.rail(rear,Vector2(x,167),Vector2(x,178),1.25,3.65)
+ var woodwork: MeshInstance3D = w.mesh_obj(asset,rear.commit(),Vector3(0,0,61.2),frame,true)
+ woodwork.name = "ProfiledCounterHutch"
+ woodwork.material_override = MaterialLibrary.make(MaterialLibrary.Finish.WALNUT,frame)
+ for y in shelf_rows:
+  var shelf: MeshInstance3D = _wood(w,asset,Vector3(0,y,45),Vector3(width-10,4.6,38),field,1.5)
+  shelf.name = "BullnoseHutchShelf"
+  for x in [-width*0.5+11,width*0.5-11]:
+   var curve: Array[Vector3] = []
+   for i in range(9):
+    var t := float(i)/8.0
+    curve.append(Vector3(x,y-3-17*(1-t)*(1-t),59-29*t))
+   var hoop: MeshInstance3D = w.mesh_obj(asset,preload("res://scripts/prop_meshes.gd").tube(curve,PackedFloat32Array([1.17]),10),Vector3.ZERO,BRASS,true,0.5)
+   hoop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 static func framed_panel(w: Node3D, parent: Node3D, p: Vector3, size: Vector3) -> MeshInstance3D:
  # Dynamic puzzle leaves keep EVERY detail under their returned MeshInstance.

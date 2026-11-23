@@ -175,10 +175,16 @@ func book(p: Vector3, width: float, depth: float, thickness: float, color: Color
  rounded_box(p+Vector3(0,thickness+0.03,0),Vector3(width*0.42,0.06,depth*0.12),color.darkened(0.19),0.025,false,Vector3(0,angle,0),0)
 
 func residential_details() -> void:
- # Floor luggage stays along the outer wall, away from the central flight aisle.
- suitcase(Vector3(133,0.4,373),Vector3(33,25,43),Color("5b4340"))
- suitcase(Vector3(133,25.7,373),Vector3(28,17,34),TEAL)
- suitcase(Vector3(-133,0.4,363),Vector3(31,21,39),Color("5b6656"))
+ # Each case is grounded beyond the sleeper bulkhead. Keep the handles
+ # unobstructed rather than burying one under a case stacked directly on it.
+ var floor_luggage := [
+  [Vector3(196,0,389),Vector3(33,25,43),Color("5b4340")],
+  [Vector3(196,0,440),Vector3(28,17,34),TEAL],
+  [Vector3(-133,0,408),Vector3(31,21,39),Color("5b6656")]
+ ]
+ set_meta("floor_luggage",floor_luggage)
+ for case in floor_luggage:
+  suitcase(case[0],case[1],case[2])
  # A narrow freestanding reading console supports the existing books in place.
  var shelf_wood := Color("60473b")
  rounded_box(Vector3(147,65,414),Vector3(32,3,75),shelf_wood,0.8,false,Vector3.ZERO,3)
@@ -224,9 +230,9 @@ func napkin(p: Vector3) -> void:
  # A thin oval metal loop surrounds the folded linen instead of a solid bar.
  instance("fine_ring",p+Vector3(0,1.0,0),Vector3(13.1,1.6,2.4),BRASS,true,Vector3(PI/2,0,0))
 
-func flower_sprig(base: Vector3, lean: Vector3, color: Color) -> void:
+func flower_sprig(base: Vector3, lean: Vector3, color: Color, seat_depth: float = 0.0) -> void:
  var tip := base+lean
- rod(base,tip,0.24,Color("536e4a"))
+ rod(base-Vector3.UP*seat_depth,tip,0.24,Color("536e4a"))
  var leaf := base.lerp(tip,0.55)
  instance("sphere",leaf+Vector3(1.2,0,0),Vector3(3.3,0.5,1.2),Color("557c56"),false,Vector3(0,0,0.3))
  for petal in range(5):
@@ -245,7 +251,7 @@ func dining_details() -> void:
  # Small fresh stems in the original vases, including the vase away from Vale’s cup.
  for z in [1050,1250,1450]:
   for j in range(3):
-   flower_sprig(Vector3(-127,96,z+28),Vector3((j-1)*3.0,8+float(j%2)*3,(j-1)*1.5),Color("e0c0ba"))
+   flower_sprig(Vector3(-127,96,z+28),Vector3((j-1)*3.0,8+float(j%2)*3,(j-1)*1.5),Color("e0c0ba"),1.05 if z==1250 else 0.0)
  # Hospitality side tables are already in the world, away from the cable duct.
  for z in [1095,1320]:
   rounded_box(Vector3(137,86.7,z),Vector3(37,0.8,31),BRASS,0.35,true)
@@ -256,7 +262,7 @@ func dining_details() -> void:
   for j in range(3):
    saucer(Vector3(128,87.4+j*0.55,z-4),9)
   napkin(Vector3(146,87.4,z+4))
- coffee_pot(Vector3(136,89.4,1516))
+ coffee_pot(Vector3(136,90.5,1516))
 
 func coffee_pot(p: Vector3) -> void:
  lathed("coffee_body",[Vector2(0.02,0),Vector2(4.3,0),Vector2(5.2,0.6),Vector2(5.2,1.3),Vector2(4.8,1.8),Vector2(4.2,3),Vector2(3.7,10.5),Vector2(3.8,14),Vector2(4.3,14.6),Vector2(4.1,15.2),Vector2(0.02,15.2)],p,Color("c7c7b8"),true)
@@ -292,8 +298,3 @@ func garden_details() -> void:
  box(Vector3(122,78.3,1880),Vector3(12,1,9),LINEN,false,0.15)
  rod(Vector3(79,78.8,1922),Vector3(79,78.8,1937),1.0,Color("80644c"))
  instance("sphere",Vector3(79,78.8,1941),Vector3(4,0.6,8),BRASS,true)
- # Spare ceramics at floor level on the planter's outer edge, not near the orchid.
- for z in [1810,2330]:
-  cyl(Vector3(148,56,z),12,12,Color("97745d"))
-  cyl(Vector3(148,62.1,z),10,0.3,Color("2e342b"))
-  instance("ring",Vector3(148,62.2,z),Vector3(12.5,0.8,12.5),CREAM)

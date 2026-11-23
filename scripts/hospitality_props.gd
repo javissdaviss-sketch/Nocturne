@@ -5,8 +5,12 @@ const WICKER := Color("9d7950")
 const BREAD := Color("b8874d")
 const GLASS := Color("48695b")
 
+# Keep the whole trolley (including its projecting handle) inside the salon,
+# with clear space beside the nearest side table and the door apron.
+const SERVICE_TROLLEY := Vector3(205,0.4,1045)
+
 func build() -> void:
- service_trolley(Vector3(125,0.4,1010))
+ service_trolley(SERVICE_TROLLEY)
  service_station(Vector3(135,86.3,1320))
  unused_place(Vector3(-101,78.0,1450))
  # Its flat underside is Y-3; the plate's well is Y78.4.
