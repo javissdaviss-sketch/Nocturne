@@ -29,6 +29,25 @@ def archive(destination: Path, files: list[tuple[Path, str]]) -> None:
             raise RuntimeError(f"ZIP validation failed: {destination.name}")
 
 
+def is_raw_reference(relative: Path) -> bool:
+    # These user-supplied art direction files are authoring inputs, not release assets.
+    return tuple(part.casefold() for part in relative.parts[:2]) in {
+        ("art", "reference"), ("art", "references"),
+    }
+
+
+def source_entries(root: Path, out: Path) -> list[tuple[Path, str]]:
+    excluded = {".git", ".godot", ".release", "__pycache__"}
+    result = []
+    for file in root.rglob("*"):
+        rel = file.relative_to(root)
+        if (file.is_file() and not file.is_symlink() and not file.is_relative_to(out)
+                and not any(part in excluded for part in rel.parts)
+                and not is_raw_reference(rel)):
+            result.append((file, "night-train/" + rel.as_posix()))
+    return result
+
+
 def manifest_for(game: Path, version: str, repository: str) -> dict:
     if not VERSION.fullmatch(version) or not REPOSITORY.fullmatch(repository):
         raise ValueError("Expected a numeric x.y.z version and owner/repository")
@@ -81,13 +100,7 @@ def build(out: Path, version: str, repository: str, godot: str, go: str) -> None
         if (ROOT / name).exists(): shutil.copy2(ROOT / name, setup / name)
     archive(out / "Nocturne-Setup-Windows.zip", [(p, "Nocturne-Setup/" + p.relative_to(setup).as_posix()) for p in setup.rglob("*") if p.is_file()])
     # Source includes workflow and launcher, but never build output or local state.
-    ignored = {".git", ".godot", ".release", "__pycache__"}
-    source_files = []
-    for p in ROOT.rglob("*"):
-        rel = p.relative_to(ROOT)
-        if p.is_file() and not any(part in ignored for part in rel.parts) and not p.is_relative_to(out):
-            source_files.append((p, "night-train/" + rel.as_posix()))
-    archive(out / "Nocturne-Source.zip", source_files)
+    archive(out / "Nocturne-Source.zip", source_entries(ROOT, out))
     names = ["Nocturne-Windows.zip", "Nocturne-Setup-Windows.zip", "Nocturne-Source.zip", "update.json"]
     (out / "SHA256SUMS.txt").write_text("".join(hashlib.sha256((out / name).read_bytes()).hexdigest() + "  " + name + "\n" for name in names))
     print(f"Built Nocturne {version}: " + ", ".join(names))

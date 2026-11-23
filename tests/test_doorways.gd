@@ -1,5 +1,6 @@
 extends SceneTree
 const World = preload("res://scripts/world.gd")
+const Guide = preload("res://scripts/carriage_guide.gd")
 var failed := false
 func _initialize() -> void:
  call_deferred("run")
@@ -10,7 +11,13 @@ func run() -> void:
  await process_frame
  var space := world.get_world_3d().direct_space_state
  var layout := world.get_node("CompartmentLayout")
+ if layout.rooms.size()!=14: failed = true
  for room in layout.rooms:
+  var displayed := Guide.solid_runs(room)
+  var cross := Guide.guidance(Vector3(room.side*170.0,105,room.entry),0,(room.car+1)%3,layout.rooms)
+  if not is_equal_approx(displayed[1].x-displayed[0].y,room.width) or cross.get("door")!=Vector3(room.side*55.0,105,room.entry):
+   failed = true
+   printerr("MAP APERTURE DIFFERS FROM GENERATED DOOR ",room)
   var volume := BoxShape3D.new()
   volume.size = Vector3(170,210,float(room.width)-8.0)
   var query := PhysicsShapeQueryParameters3D.new()
@@ -35,5 +42,5 @@ func run() -> void:
       printerr("BLOCKED FLY SWEEP ",room," height=",height," offset=",offset," direction=",direction)
  world.queue_free()
  await process_frame
- if not failed: print("PASS: all fourteen room entrances have clear full-height volumes and two-way fly sweeps")
+ if not failed: print("PASS: all fourteen mapped room entrances match real clear volumes and two-way fly sweeps")
  quit(1 if failed else 0)

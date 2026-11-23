@@ -4,14 +4,24 @@ extends "res://scripts/lived_in_details.gd"
 const MAHOGANY := Color("583729")
 const VELVET := Color("194b45")
 const CYAN := Color("52bcb8")
+const Layout = preload("res://scripts/train_layout.gd")
+const RoomShadowPolicy = preload("res://scripts/room_shadow_policy.gd")
+const Profiles = preload("res://scripts/profiled_interior.gd")
+const RoomFields := preload("res://scripts/fitted_room_wall_fields.gd")
+const RoomIdentity = preload("res://scripts/room_identity.gd")
 var world: Node3D
+var profiles: Node3D
 
 func build_interior(w: Node3D, layout: Node3D) -> void:
  name = "CyberLuxeInterior"
  world = w
+ profiles = Profiles.new()
+ profiles.name = "MeridianProfiledTrim"
+ add_child(profiles)
  for room in layout.rooms:
   wall_panels(room)
   transverse_panels(room)
+  RoomIdentity.draw(world,self,room)
   if room.car == 0: suite_details(room)
   elif room.car == 1: lounge_details(room)
   else: garden_details_luxe(room)
@@ -63,6 +73,9 @@ func build_interior(w: Node3D, layout: Node3D) -> void:
   if child is MultiMeshInstance3D:
    var key := str(child.get_meta("detail_batch_key",str(child.name).trim_prefix("Details_")))
    child.material_override = materials[batches[key].material]
+ profiles.finish()
+
+const LowerShell := preload("res://scripts/window_lower_joinery.gd")
 
 func wall_panels(room: Dictionary) -> void:
  var side: int = room.side
@@ -70,6 +83,7 @@ func wall_panels(room: Dictionary) -> void:
  var hi: float = room.hi
  var entry: float = room.entry
  var wallpaper := Color("273f3b") if room.car != 1 else Color("344850")
+ var residential_finish := RoomIdentity.wall(room)
  # Work only within the solid wall spans; the 92 cm physical portal stays open.
  for span in [Vector2(lo+5,entry-50),Vector2(entry+50,hi-5)]:
   if span.y-span.x < 12: continue
@@ -77,20 +91,24 @@ func wall_panels(room: Dictionary) -> void:
   var middle: float = (span.x+span.y)*0.5
   for face in [-1,1]:
    var x: float = side*55+face*3.0
-   wainscot(x,middle,length)
+   wainscot(x,middle,length,side if face==-side else 0,room.car)
    var wall: MeshInstance3D = world.box(Vector3(x,153,middle),Vector3(0.5,114,length),Color.WHITE,false,self)
-   wall.material_override = world.cabin_finish(3,wallpaper)
+   wall.material_override = residential_finish if face==side and residential_finish!=null else world.cabin_finish(3,wallpaper)
    wall.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
    for y in [92,96,211,216,278]:
     box(Vector3(x+face*0.8,y,middle),Vector3(1.0,1.2,length),BRASS,true)
+   if face==side and RoomFields.dress(world,self,room,x,span.x,span.y):
+    continue
    var count := maxi(1,int(length/110))
    for j in range(count+1):
     var z: float = span.x+length*float(j)/count
     box(Vector3(x+face*0.6,150,z),Vector3(1,119,1.1),BRASS,true)
   # Brass pilasters frame each wallpaper bay on the corridor side.
   for z in [span.x,span.y]:
-   box(Vector3(side*50.5,139,z),Vector3(3,276,3),MAHOGANY)
-   box(Vector3(side*48.5,139,z),Vector3(0.7,263,0.7),BRASS,true)
+   if room.car==1: profiles.pilaster(side,z)
+   else:
+    box(Vector3(side*50.5,139,z),Vector3(3,276,3),MAHOGANY)
+    box(Vector3(side*48.5,139,z),Vector3(0.7,263,0.7),BRASS,true)
  # A warm fluted wall lamp at each entrance, with cyan access-control inset.
  var lamp_z: float = entry-float(room.width)*0.5-15.0
  if lamp_z-7.0 < lo+5.0: lamp_z = entry+float(room.width)*0.5+15.0
@@ -103,25 +121,34 @@ func wall_panels(room: Dictionary) -> void:
  box(Vector3(side*46.8,123,entry-49),Vector3(0.5,7,3.8),CYAN)
  # Enriched parked door leaf, never across the open entrance.
  var parked: float = room.parked
- box(Vector3(side*49,111,parked),Vector3(0.7,172,41),MAHOGANY)
- for z in [parked-18,parked+18]:
-  box(Vector3(side*48,111,z),Vector3(0.5,163,0.7),BRASS,true)
- for y in [30,191]:
-  box(Vector3(side*48,y,parked),Vector3(0.5,0.7,37),BRASS,true)
+ if room.car==1: profiles.parked_leaf(side,parked)
+ else:
+  box(Vector3(side*49,111,parked),Vector3(0.7,172,41),MAHOGANY)
+  for z in [parked-18,parked+18]:
+   box(Vector3(side*48,111,z),Vector3(0.5,163,0.7),BRASS,true)
+  for y in [30,191]:
+   box(Vector3(side*48,y,parked),Vector3(0.5,0.7,37),BRASS,true)
  # Broad exterior window sill and upholstered wall panels below the glass.
  box(Vector3(side*499,92,(lo+hi)*0.5),Vector3(16,4,hi-lo-14),MAHOGANY)
  for y in [12,83]:
   box(Vector3(side*506,y,(lo+hi)*0.5),Vector3(1,2,hi-lo-14),BRASS,true)
  for z in range(int(lo+24),int(hi-12),72):
+  if LowerShell.pilot(room.car,int(lo),z):
+   LowerShell.build(world,self,room.car,side,z)
+   continue
   box(Vector3(side*506,47,z),Vector3(1,58,58),VELVET)
   box(Vector3(side*504.8,47,z),Vector3(0.7,2,9),BRASS,true)
 
-func wainscot(x: float, z: float, length: float) -> void:
- box(Vector3(x,45,z),Vector3(0.8,88,length),MAHOGANY)
+func wainscot(x: float, z: float, length: float, profile_side: int = 0, car: int = 1) -> void:
+ if profile_side!=0: profiles.backing(profile_side,x,z,length,car)
+ else: box(Vector3(x,45,z),Vector3(0.8,88,length),MAHOGANY)
  var count := maxi(1,int(length/58))
  for j in range(count):
   var pz := z-length*0.5+(j+0.5)*length/count
   var width := length/count-10
+  if profile_side!=0:
+   profiles.dado(profile_side,x,45,pz,width,car)
+   continue
   for y in [15,75]: box(Vector3(x-signf(x),y,pz),Vector3(0.8,1.0,width),BRASS,true)
   for dz in [-width*0.5,width*0.5]:
    box(Vector3(x-signf(x),45,pz+dz),Vector3(0.8,60,1),BRASS,true)
@@ -129,11 +156,13 @@ func wainscot(x: float, z: float, length: float) -> void:
 func transverse_panels(room: Dictionary) -> void:
  var side: int = room.side
  var x: float = side*285
+ var residential_finish := RoomIdentity.wall(room)
  for end in [Vector2(room.lo,1),Vector2(room.hi,-1)]:
-  var z: float = end.x+end.y*3.5
+  var z: float = end.x+end.y*RoomIdentity.bulkhead_liner_inset(room.car,end.x)
   box(Vector3(x,44,z),Vector3(438,86,1),MAHOGANY)
   var finish: MeshInstance3D = world.box(Vector3(x,164,z),Vector3(438,139,0.5),Color.WHITE,false,self)
-  finish.material_override = world.cabin_finish(3,Color("293e39") if room.car != 1 else Color("30434a"))
+  finish.name = "ExposedTransverseLiner"
+  finish.material_override = residential_finish if residential_finish!=null else world.cabin_finish(3,Color("293e39") if room.car != 1 else Color("30434a"))
   finish.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
   for y in [13,78,91,235,278]:
    box(Vector3(x,y,z+end.y*0.8),Vector3(438,1.1,1),BRASS,true)
@@ -143,6 +172,7 @@ func transverse_panels(room: Dictionary) -> void:
     box(Vector3(x+dx,164,z+end.y*0.8),Vector3(0.7,138,0.7),BRASS,true)
 
 func corridor_ceiling(car: int) -> void:
+ preload("res://scripts/coach_coffers.gd").install(world,self,car)
  var start := float(car)*840
  box(Vector3(0,292,start+400),Vector3(90,2,786),Color("c6b494"))
  for x in [-44,44]:
@@ -170,10 +200,12 @@ func suite_details(room: Dictionary) -> void:
  # Travel trunk and subtle perimeter wiring, pulled away from original clues.
  suitcase(Vector3(side*420,1,z+125),Vector3(96,42,45),MAHOGANY)
  box(Vector3(side*420,29,z+101.8),Vector3(87,0.7,0.6),CYAN)
- data_slate(Vector3(side*242,78,room.lo+75))
- desk_lamp(Vector3(side*242+side*24,78,room.lo+57))
- pocket_watch(Vector3(side*242+side*25,79,room.lo+78))
- room_key(Vector3(side*396,237,z+12),Color("ffcf95"),17,295)
+ var desk := Layout.sleeper_desk_center(side,room.lo)
+ var surface := desk+Vector3(0,Layout.DESK_TOP_Y,0)
+ data_slate(surface+Vector3(-side*13,0.75,0))
+ desk_lamp(surface+Vector3(side*20,0,-17))
+ pocket_watch(surface+Vector3(side*15,0.75,10))
+ room_key(Vector3(side*396,237,z+12),Color("ffcf95"),17,295,RoomShadowPolicy.proved_role(room))
  pendant(Vector3(side*396,267,z+12),false)
 
 func curtains(car: int) -> void:
@@ -185,9 +217,10 @@ func data_slate(p: Vector3) -> void:
 func desk_lamp(p: Vector3) -> void:
  preload("res://scripts/sleeping_assets.gd").build_reading_lamp(world,self,p)
 
-func room_key(p: Vector3, color: Color, energy: float, reach: float) -> void:
+func room_key(p: Vector3, color: Color, energy: float, reach: float, gl_fill: bool = false) -> void:
  var light := SpotLight3D.new()
  light.set_meta("room_key",true)
+ if gl_fill: light.set_meta("gl_room_key_fill",true)
  light.light_color = color
  light.light_energy = energy
  light.light_size = 8.0
@@ -195,7 +228,7 @@ func room_key(p: Vector3, color: Color, energy: float, reach: float) -> void:
  light.spot_angle = 66
  light.spot_attenuation = 0.65
  light.spot_angle_attenuation = 0.6
- light.shadow_enabled = true
+ light.shadow_enabled = RoomShadowPolicy.allows(light,true,RenderingServer.get_current_rendering_method())
  light.shadow_bias = 0.18
  light.shadow_normal_bias = 1.0
  add_child(light)
@@ -231,7 +264,7 @@ func pocket_watch(p: Vector3) -> void:
 func lounge_details(room: Dictionary) -> void:
  var side: int = room.side
  if room.hi-room.lo > 300:
-  for z in [room.lo+100,room.hi-100]:
+  for z in Layout.salon_table_rows(room.lo,room.hi):
    var x: float = side*345
    for dx in [-55,55]:
     napkin(Vector3(x+dx,78.2,z-21))
@@ -240,26 +273,17 @@ func lounge_details(room: Dictionary) -> void:
    cyl(Vector3(x,81,z),10,5,BRASS,true)
    cyl(Vector3(x,88,z),6,10,Color("345c55"))
    for j in range(3): flower_sprig(Vector3(x,94,z),Vector3(j*2-2,12,j*2-2),Color("bfac90"))
-  world.plant(Vector3(side*465,1,room.lo+35),154,34)
-  # Complete, symmetric sunburst on a quiet walnut plaque.
-  var medallion := Vector3(side*290,175,room.hi-5.5)
-  box(medallion+Vector3(0,0,0.5),Vector3(109,114,1),MAHOGANY)
-  for x in [-52,52]: box(medallion+Vector3(x,0,-1),Vector3(1,109,1),BRASS,true)
-  for y in [-54,54]: box(medallion+Vector3(0,y,-1),Vector3(104,1,1),BRASS,true)
-  for radius in [18,39,46]:
-   instance("fine_ring",medallion-Vector3(0,0,1.5),Vector3(radius*2,1.3,radius*2),BRASS,true,Vector3(PI/2,0,0))
-  for ray in range(24):
-   var angle := ray*TAU/24
-   rod(medallion+Vector3(cos(angle)*21,sin(angle)*21,-1.5),medallion+Vector3(cos(angle)*37,sin(angle)*37,-1.5),1.0,BRASS,true)
-  var title: Label3D = world.sign_text("N",medallion+Vector3(0,1,-2.5),1.4,CREAM,self)
-  title.font = preload("res://assets/Editorial.ttf")
-  title.rotation.y = PI
-  var caption: Label3D = world.sign_text("MERIDIAN",medallion+Vector3(0,-50,-2.5),0.32,BRASS,self)
-  caption.rotation.y = PI
+  world.plant(Vector3(side*459,1,room.lo+62),154,34)
+  # The two old duplicate medallions are replaced by the individually
+  # modelled bulkhead inserts in RoomIdentity.
   pendant(Vector3(side*345,257,(room.lo+room.hi)*0.5),true)
-  room_key(Vector3(side*345,239,(room.lo+room.hi)*0.5),Color("ffd7a5"),22,325)
+  room_key(Vector3(side*345,239,(room.lo+room.hi)*0.5),Color("ffd7a5"),22,325,RoomShadowPolicy.proved_role(room))
  else:
-  # A compact service group leaves a clear working surface and the slate exposed.
+  # Reception desks have actual use-specific fittings on the built shell.
+  # Keep the shared galley vessels out of both public reception counters.
+  if room.lo<990.0: return
+  # Only the galley pantry stores vessels, not the steward’s dispatch counter.
+  if side>0: return
   for variation in range(3):
    var height: float = 10.0+variation*3.0
    var p := Vector3(side*(441+(variation%2)*10),96,room.lo+50+variation*17)
@@ -268,7 +292,6 @@ func lounge_details(room: Dictionary) -> void:
    lathed("galley_lid_"+str(variation),[Vector2(0.02,0),Vector2(3.1,0),Vector2(3.3,0.3),Vector2(3.2,0.6),Vector2(2.6,0.9),Vector2(0.02,1.0)],p+Vector3(0,height,0),BRASS,true)
    instance("fine_ring",p+Vector3(0,height+1.8,0),Vector3(2.0,0.45,2.0),BRASS,true,Vector3(PI/2,0,0))
    rounded_box(p+Vector3(-side*3.12,height*0.5,0),Vector3(0.25,3.5,3),MAHOGANY,0.1)
-  data_slate(Vector3(side*393,97,(room.lo+room.hi)*0.5))
 
 func garden_details_luxe(room: Dictionary) -> void:
  var side: int = room.side

@@ -3,9 +3,10 @@
 import argparse
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import subprocess
-from build import VERSION, REPOSITORY
+import zipfile
+from build import VERSION, REPOSITORY, is_raw_reference
 
 ASSETS = ["Nocturne-Windows.zip", "Nocturne-Setup-Windows.zip", "Nocturne-Source.zip", "update.json", "SHA256SUMS.txt"]
 
@@ -27,6 +28,23 @@ def verify(directory: Path, version: str, repository: str) -> None:
         if not path.is_file(): raise ValueError(f"Missing release asset: {name}")
         if name != "SHA256SUMS.txt" and sums.get(name) != hashlib.sha256(path.read_bytes()).hexdigest():
             raise ValueError(f"Checksum mismatch: {name}")
+    verify_source_archive(directory / "Nocturne-Source.zip")
+
+def verify_source_archive(path: Path) -> None:
+    try:
+        with zipfile.ZipFile(path) as archive:
+            members = archive.namelist()
+            if (not members or len(members) != len(set(members)) or archive.testzip() is not None):
+                raise ValueError("Invalid source archive")
+            for name in members:
+                relative = PurePosixPath(name)
+                if (len(relative.parts) < 2 or relative.parts[0] != "night-train"
+                        or ".." in relative.parts or "\\" in name
+                        or is_raw_reference(PurePosixPath(*relative.parts[1:]))):
+                    raise ValueError(f"Unpublishable source path: {name}")
+    except zipfile.BadZipFile as error:
+        raise ValueError("Invalid source archive") from error
+
 
 def main() -> None:
     p = argparse.ArgumentParser()

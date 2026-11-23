@@ -1,6 +1,9 @@
 extends SceneTree
 ## Physical regressions for visible MeshInstance and MultiMesh props, at fly scale.
 const World = preload("res://scripts/world.gd")
+const Hospitality = preload("res://scripts/hospitality_props.gd")
+const Data = preload("res://scripts/case_data.gd")
+const State = preload("res://scripts/case_state.gd")
 const Fly = preload("res://scripts/fly.gd")
 var failures: Array[String] = []
 var fly: CharacterBody3D
@@ -63,6 +66,7 @@ func overlaps_body(point: Vector3) -> bool:
 func check_talk_prompts() -> void:
  var game = load("res://scenes/main.tscn").instantiate()
  root.add_child(game)
+ if game.mode=="loading": await game.investigation_ready
  await frames(2)
  game.resume_game()
  game.fly.active = false
@@ -77,6 +81,7 @@ func check_talk_prompts() -> void:
   game.fly.camera.look_at(target)
   await frames(2)
   check(game.nearest == id,"New solid actor does not hide its own listening prompt: "+id)
+  check(game.markers[id].visible,"Visible speaker shows a guide marker: "+id)
   # A genuinely separate wall must still occlude the same speaker.
   var barrier := StaticBody3D.new()
   var shape := CollisionShape3D.new()
@@ -88,10 +93,81 @@ func check_talk_prompts() -> void:
   barrier.position = Vector3(144,target.y,target.z)
   await frames(2)
   check(game.nearest != id,"Separate solid obstruction blocks listening prompt: "+id)
+  check(not game.markers[id].visible,"Separate solid obstruction hides the guide marker: "+id)
+  # Simulate the previous frame's target during the input event, before a HUD
+  # refresh. The newly blocked target must not inspect or trigger a landing.
+  game.nearest = id
+  var old_position: Vector3 = game.fly.position
+  var old_landed: bool = game.fly.landed
+  var stale_inspect := InputEventKey.new()
+  stale_inspect.keycode = KEY_E
+  stale_inspect.pressed = true
+  game._unhandled_input(stale_inspect)
+  check(game.mode=="play" and not game.state.found.has(id),"E rejects a stale occluded target: "+id)
+  check(game.fly.position==old_position and game.fly.landed==old_landed,"Stale interaction does not land or snap the player")
   barrier.queue_free()
   await frames(2)
+ await check_evidence_cup(game)
+ await check_crate_tag(game)
  game.queue_free()
  await frames(1)
+
+func check_evidence_cup(game: Node3D) -> void:
+ game.fly.active = false
+ game.fly.position = Vector3(-88,95,1250)
+ game.fly.camera.position = Vector3(-88,102,1234)
+ game.fly.camera.look_at(game.world.hotspots.cup.position)
+ await frames(2)
+ check(game.nearest=="cup" and game.interaction_is_current("cup"),
+  "Original evidence cup still has unblocked in-reach live interaction")
+ var inspect := InputEventKey.new()
+ inspect.keycode = KEY_E
+ inspect.pressed = true
+ game._unhandled_input(inspect)
+ check(game.mode=="inspection" and game.current_id=="cup" and game.state.found.has("cup"),
+  "E still records the original cup after place-setting correction")
+ game.resume_game()
+
+func check_crate_tag(game: Node3D) -> void:
+ var flyer: CharacterBody3D = game.fly
+ flyer.active = false
+ flyer.position = Vector3(-153,6,2432)
+ var space := game.world.get_world_3d().direct_space_state as PhysicsDirectSpaceState3D
+ var blocked_sight := space.intersect_ray(PhysicsRayQueryParameters3D.create(flyer.position,Data.CRATE_TAG_POINT,1))
+ check(not blocked_sight.is_empty() and blocked_sight.position.distance_to(Data.CRATE_TAG_POINT)>4,
+  "A solid crate slat occludes the paper before reaching it")
+ var collision: KinematicCollision3D = flyer.move_and_collide(Vector3(13,0,0))
+ check(collision != null,"Cannot enter through the solid slat")
+ var gap_start := Vector3(-153,10.3,2432)
+ flyer.position = gap_start
+ flyer.camera.position = gap_start+Vector3(-8,2,0)
+ flyer.camera.look_at(Data.CRATE_TAG_POINT)
+ await frames(2)
+ check(not game.available("crate_tag") and game.nearest != "crate_tag" and not game.markers.crate_tag.visible,
+  "The optional observation is neither advertised nor usable from outside")
+ collision = flyer.move_and_collide(Vector3(13,0,0))
+ check(collision == null and flyer.position.distance_to(Vector3(-140,10.3,2432))<0.05,
+  "The real fly fits between the original crate slats")
+ flyer.camera.position = flyer.position+Vector3(-3,0.7,0)
+ flyer.camera.look_at(Data.CRATE_TAG_POINT)
+ await frames(2)
+ check(game.available("crate_tag") and game.nearest == "crate_tag",
+  "The actual aim and reach path offers inspection from within the crate")
+ var before: int = game.state.evidence_count()
+ var inspect := InputEventKey.new()
+ inspect.keycode = KEY_E
+ inspect.pressed = true
+ game._unhandled_input(inspect)
+ check(game.mode=="inspection" and game.state.found.has("crate_tag"),"E records the optional ordinary observation")
+ var camera_local: Vector3 = flyer.camera.position-Data.CRATE_ORIGIN
+ check(absf(camera_local.x)<14 and absf(camera_local.z)<16.5 and flyer.inspect_max_distance<=5.2,
+  "Optional inspection camera stays on the inside of the crate")
+ check(game.state.evidence_count()==before and not Data.ESSENTIAL.has("crate_tag"),
+  "The crate tag does not change the physical evidence count or required proof")
+ var reloaded := State.new()
+ check(reloaded.load_from() and reloaded.found.has("crate_tag"),"Optional observation survives a real save/reload")
+ check(Data.solved(0,0,["cup","chemical","ledger","note"]) and not Data.solved(0,0,["cup","chemical","ledger","crate_tag"]),
+  "The optional tag does not replace any required evidence or become compulsory")
 
 func run() -> void:
  world = World.new()
@@ -100,13 +176,14 @@ func run() -> void:
  root.add_child(fly)
  fly.active = false
  await frames(2)
+ var trolley_offset := Hospitality.SERVICE_TROLLEY - Vector3(125,0.4,1010)
  # Both approaches must hit the thin trolley deck, not a coarse volume around it.
- blocked("Trolley deck edge",Vector3(90,78.4,1010),Vector3(60,0,0))
- check(fly.position.x < 103.0,"Horizontal sweep stops before the trolley deck")
- blocked("Trolley top",Vector3(142,110,1010),Vector3(0,-60,0))
+ blocked("Trolley deck edge",trolley_offset+Vector3(90,78.4,1010),Vector3(60,0,0))
+ check(fly.position.x < 103.0+trolley_offset.x,"Horizontal sweep stops before the trolley deck")
+ blocked("Trolley top",trolley_offset+Vector3(142,110,1010),Vector3(0,-60,0))
  check(fly.position.y > 79.6,"Downward sweep rests on the top tray, not the lower shelf")
- clear_gap("Space between trolley legs",Vector3(96,55,1010),Vector3(58,0,0))
- blocked("Thin trolley leg",Vector3(97,55,985),Vector3(20,0,0))
+ clear_gap("Space between trolley legs",trolley_offset+Vector3(96,55,1010),Vector3(58,0,0))
+ blocked("Thin trolley leg",trolley_offset+Vector3(97,55,985),Vector3(20,0,0))
  blocked("Overhead luggage",Vector3(143,245,300),Vector3(0,0,65))
  check(fly.position.z < 311.0,"Luggage front face blocks entry")
  blocked("Radio front",Vector3(105,89,287),Vector3(28,0,0))
@@ -132,22 +209,22 @@ func run() -> void:
   blocked("Palm frond upper side",center+normal*2.0,-normal*4.0)
   blocked("Palm frond lower side",center-normal*2.0,normal*4.0)
  # A torus collider must preserve the handle hole and still stop at its rim.
- clear_gap("Teapot handle hole",Vector3(110,89.4,996),Vector3(0,0,6))
- blocked("Teapot handle rim",Vector3(105.7,89.4,996),Vector3(0,0,6))
+ clear_gap("Teapot handle hole",trolley_offset+Vector3(110,89.4,996),Vector3(0,0,6))
+ blocked("Teapot handle rim",trolley_offset+Vector3(105.7,89.4,996),Vector3(0,0,6))
  clear_gap("Garden crate slat gap",Vector3(-154,10,2421),Vector3(7.5,0,0))
  blocked("Garden crate slat",Vector3(-154,6,2421),Vector3(7.5,0,0))
  clear_gap("Open service cable duct above its cable",Vector3(65,12,1460),Vector3(37,0,0))
  check(fly.position.distance_to(Vector3(104,11,1460))<5.0,"Duct route reaches the latch within interaction distance")
  blocked("Fixed service cabinet front beside the puzzle door",Vector3(65,50,1521),Vector3(30,0,0))
  # Exercise the real flight controller at full speed against a narrow trolley leg.
- place(Vector3(95,55,985))
+ place(trolley_offset+Vector3(95,55,985))
  fly.yaw = 0.0
  fly.active = true
  fly.velocity = Vector3(165,0,0)
  key(KEY_D,true)
  await frames(18)
  key(KEY_D,false)
- check(fly.position.x < 105.3,"Full-speed active flight cannot tunnel through a trolley leg")
+ check(fly.position.x < 105.3+trolley_offset.x,"Full-speed active flight cannot tunnel through a trolley leg")
  fly.active = false
  # Walk slowly across the real tabletop into the raised travel board.
  place(Vector3(-127,84,140))
@@ -159,7 +236,7 @@ func run() -> void:
  check(fly.position.x < -121.1 and fly.landed,"Landed walking stops at the chessboard edge")
  fly.active = false
  # Snap onto a newly-solid thin tray through the same player landing action.
- place(Vector3(142,90,1010))
+ place(trolley_offset+Vector3(142,90,1010))
  check(fly.try_land() and fly.landed and fly.position.y > 79.7,"Landing snaps to the trolley's upper tray")
  # A thin overhead plate leaves enough room for a landed fly, but not a teleport.
  # This isolated physical fixture tests takeoff independently of changing props.

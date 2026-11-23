@@ -2,13 +2,23 @@ extends Node3D
 ## Human-scale railway district. Perspective supplies parallax at one train speed.
 const HALO = preload("res://shaders/neon_halo.gdshader")
 const WINDOWS = preload("res://shaders/neon_windows.gdshader")
+const HotelRelief:=preload("res://scripts/railside_hotel_relief.gd")
 const MASONRY = preload("res://shaders/city_masonry.gdshader")
+const NightLocal = preload("res://scripts/night_local.gd")
 const PERIOD := 13440.0
 const TRAIN_SPEED := 460.0
 const STREET_LEVEL := -120.0
+const SIGN_COLORS := [Color("55cbd2"),Color("d478a5"),Color("e4b36a")]
+const SALON_BAY_Z := 1135.0
+const MAX_SPILL_ENERGY := 1.35
 var layers: Array[Node3D] = []
 var clock := 0.0
 var halos: Array[MeshInstance3D] = []
+var sign_sources: Array[Dictionary] = []
+var spill_lights: Array[SpotLight3D] = []
+var night_local: Node3D
+var passing_train_enabled := false
+var effects_enabled := true
 var rng := RandomNumberGenerator.new()
 var building_material: ShaderMaterial
 var window_material: ShaderMaterial
@@ -17,6 +27,7 @@ var tube_materials: Array[StandardMaterial3D] = []
 var metal_material: StandardMaterial3D
 var facade_transforms: Dictionary = {}
 var facade_colors: Dictionary = {}
+var hotel_relief:SurfaceTool
 
 func build() -> void:
  set_meta("solid_geometry_exclude",true)
@@ -32,7 +43,7 @@ func build() -> void:
  trim_material.albedo_color = Color("101a21")
  trim_material.roughness = 0.3
  trim_material.metallic = 0.5
- for tint in [Color("55cbd2"),Color("d478a5"),Color("e4b36a")]:
+ for tint in SIGN_COLORS:
   var material := StandardMaterial3D.new()
   material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
   material.albedo_color = tint.lightened(0.45)
@@ -44,6 +55,9 @@ func build() -> void:
   layers.append(layer)
   facade_transforms.clear()
   facade_colors.clear()
+  if layer_index==0:
+   hotel_relief=SurfaceTool.new()
+   hotel_relief.begin(Mesh.PRIMITIVE_TRIANGLES)
   # The 134 m district wraps beyond the camera's 80 m range. Every section
   # repeats its seed, so the wrap never substitutes a different frontage.
   for section in range(-2,2):
@@ -61,6 +75,12 @@ func build() -> void:
   for group in facade_transforms:
    var material: Material = window_material if group == "Windows" else (metal_material if group == "Metal" else building_material)
    batch(layer,facade_transforms[group],facade_colors[group],material,group)
+  if layer_index==0: HotelRelief.attach(layer,hotel_relief.commit())
+ build_salon_spill()
+ night_local = NightLocal.new()
+ add_child(night_local)
+ night_local.build()
+ update_passing_train()
  set_meta("facade_scale",{"floor_pitch_cm":Vector2(300,325),"upper_window_height_cm":Vector2(160,190),"upper_window_width_cm":Vector2(90,115),"minimum_frontage_cm":1000,"nearest_wall_cm":1180,"district_period_cm":PERIOD})
 
 func facade_box(group: String, size: Vector3, p: Vector3, color: Color) -> void:
@@ -137,7 +157,9 @@ func facade(layer: Node3D, side: int, layer_index: int, index: int, front: float
   facade_box("Stone",Vector3(225,16,width+80),Vector3(side*(front-96),STREET_LEVEL-8,z),stone.darkened(0.18))
   facade_box("Stone",Vector3(22,26,width+80),Vector3(side*(front-205),STREET_LEVEL-3,z),cornice.darkened(0.18))
   if index in [1,4,7]:
-   neon_sign(layer,Vector3(side*(front-12),STREET_LEVEL+pitch-38,z-width*0.16),side,(index+int(side)+3)%3,index)
+   var sign_at:=Vector3(side*(front-12),STREET_LEVEL+pitch-38,z-width*0.16)
+   neon_sign(layer,sign_at,side,(index+int(side)+3)%3,index)
+   if index==1: HotelRelief.append_batch(hotel_relief,side,sign_at)
 
 func balcony(side: int, front: float, y: float, z: float, width: float, metal: Color, stone: Color) -> void:
  facade_box("Stone",Vector3(94,12,width),Vector3(side*(front-35),y-5,z),stone)
@@ -179,6 +201,9 @@ func block(parent: Node3D, size: Vector3, position3: Vector3, material: Material
  return instance
 
 func neon_sign(parent: Node3D, position3: Vector3, side: int, palette: int, index: int) -> void:
+ # One seed-identical district repeat supplies motion for all lit signs.
+ if position3.z>=0 and position3.z<PERIOD:
+  sign_sources.append({"z":position3.z,"side":side,"tint":SIGN_COLORS[palette]})
  var sign_root := Node3D.new()
  parent.add_child(sign_root)
  sign_root.position = position3
@@ -213,7 +238,7 @@ func neon_sign(parent: Node3D, position3: Vector3, side: int, palette: int, inde
  halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
  var material := ShaderMaterial.new()
  material.shader = HALO
- material.set_shader_parameter("neon_color",Color("55cbd2") if palette == 0 else (Color("d478a5") if palette == 1 else Color("e4b36a")))
+ material.set_shader_parameter("neon_color",SIGN_COLORS[palette])
  material.set_shader_parameter("frame_ratio",Vector2(1.0,1.0))
  material.set_shader_parameter("sign_phase",float(index*7+side))
  halo.material_override = material
@@ -231,12 +256,68 @@ func neon_sign(parent: Node3D, position3: Vector3, side: int, palette: int, inde
  sign_root.add_child(reflection)
  halos.append(reflection)
 
+func build_salon_spill() -> void:
+ # Two restrained, non-shadowed lights stay in a single window bay, facing
+ # the sill and nearby furniture, not the evidence at the inner tables.
+ for side in [-1,1]:
+  var spill := SpotLight3D.new()
+  spill.name = "PassingNeonLeft" if side == -1 else "PassingNeonRight"
+  spill.light_energy = 0.0
+  spill.shadow_enabled = false
+  spill.spot_range = 145.0
+  spill.spot_attenuation = 1.2
+  spill.spot_angle = 61.0
+  add_child(spill)
+  spill.position = Vector3(side*502,178,SALON_BAY_Z)
+  spill.look_at(Vector3(side*397,116,SALON_BAY_Z))
+  spill_lights.append(spill)
+
+func sample_salon_sign(side: int, district_offset: float) -> Dictionary:
+ var closest := INF
+ var tint := Color.WHITE
+ for sign_source in sign_sources:
+  if sign_source.side != side: continue
+  var distance := absf(fposmod(sign_source.z+district_offset-SALON_BAY_Z+PERIOD*0.5,PERIOD)-PERIOD*0.5)
+  if distance < closest:
+   closest = distance
+   tint = sign_source.tint
+ var signal_strength := 1.0-smoothstep(30.0,455.0,closest)
+ return {"energy":MAX_SPILL_ENERGY*signal_strength*signal_strength,"tint":Color("e5e8eb").lerp(tint,0.58)}
+
+func update_salon_spill(district_offset: float) -> void:
+ if not effects_enabled: return
+ for i in range(spill_lights.size()):
+  var sample := sample_salon_sign(-1 if i==0 else 1,district_offset)
+  spill_lights[i].light_color = sample.tint
+  spill_lights[i].light_energy = sample.energy
+
 func set_effects_enabled(enabled: bool) -> void:
+ effects_enabled = enabled
+ update_passing_train()
  for halo in halos: halo.visible = enabled
+ for spill in spill_lights:
+  spill.visible = enabled
+  if not enabled: spill.light_energy = 0.0
+ if enabled: update_salon_spill(fposmod(clock*TRAIN_SPEED,PERIOD))
+
+func set_passing_train_enabled(enabled: bool) -> void:
+ if enabled == passing_train_enabled: return
+ passing_train_enabled = enabled
+ update_passing_train()
+
+func update_passing_train() -> void:
+ if is_instance_valid(night_local):
+  night_local.set_ambient_enabled(effects_enabled and passing_train_enabled)
+
+func observe_salon_view(viewer: Vector3,forward: Vector3) -> void:
+ if effects_enabled and passing_train_enabled and is_instance_valid(night_local):
+  night_local.observe(viewer,forward,true)
 
 func _process(delta: float) -> void:
  clock += delta
- var district_offset := fmod(clock*TRAIN_SPEED,PERIOD)
+ if is_instance_valid(night_local) and night_local.in_motion: night_local.advance(delta)
+ var district_offset := fposmod(clock*TRAIN_SPEED,PERIOD)
+ update_salon_spill(district_offset)
  if building_material != null:
   building_material.set_shader_parameter("district_offset",district_offset)
  for i in range(layers.size()):

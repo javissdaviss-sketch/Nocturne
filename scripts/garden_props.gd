@@ -4,6 +4,7 @@ const Fixtures = preload("res://scripts/garden_fixture_geometry.gd")
 const Profiles = preload("res://scripts/ceramic_profiles.gd")
 const Padding = preload("res://scripts/upholstery_geometry.gd")
 const Botanicals = preload("res://scripts/botanical_collection.gd")
+const Data = preload("res://scripts/case_data.gd")
 
 func box(p: Vector3, size: Vector3, color: Color, metal: bool = false, rotation_y: float = 0.0) -> void:
  var key := "joinery_"+str(size)
@@ -18,22 +19,38 @@ func vessel(p: Vector3, diameter: float, height: float, color: Color) -> Vector3
  return p+Vector3(0,height,0)
 
 func build() -> void:
+ name = "GardenAccessories"
  var botanical := Botanicals.new()
  botanical.make_leaf_meshes()
  meshes["seedling_leaf"] = botanical.meshes["broad_leaf"]
  botanical.free()
- watering_can(Vector3(134,50.2,2177))
- nursery_tray(Vector3(-134,50.2,1905))
- propagation_rack(Vector3(143,50.2,2268))
- slatted_crate(Vector3(-133,0.3,2421))
- # Coiled hose and brass tap stay on the lower outer panel, not in the aisle.
- # The winding is one continuous round rubber hose, hung on a cast cradle.
+ # The older absolute placements put garden tools in mid-air after
+ # the beds rotated. Seat the tray and rack on the actual soil transforms.
+ var tray := Fixtures.seat_on_soil(Fixtures.inner_bed_site(-1,1880),-25)
+ var rack := Fixtures.seat_on_soil(Fixtures.inner_bed_site(1,2260),-22)
+ # The can has a 0.4 cm modeled foot; seat that foot on the floor.
+ var can := Vector3(178,-0.4,2195)
+ var front_pot := Fixtures.seat_on_soil(Fixtures.inner_bed_site(1,1880),72)
+ var archive_pot := Fixtures.seat_on_soil(Fixtures.inner_bed_site(1,2260),-70)
+ set_meta("garden_support_anchors",{"tray":tray,"rack":rack,"can":can,"front_pot":front_pot,"archive_pot":archive_pot})
+ watering_can(can)
+ nursery_tray(tray)
+ propagation_rack(rack)
+ for spare in [front_pot,archive_pot]:
+  vessel(spare-Vector3.UP*0.2,12,12,Color("97745d"))
+ slatted_crate(Data.CRATE_ORIGIN)
+ # Fit the hose and its four metal supports to the outer face of the actual
+ # archive planter, instead of leaving the old freestanding coil in mid-air.
+ var fixture := Fixtures.inner_bed_site(-1,2260)*Vector3(74,49,-29)
+ var hook := fixture+Vector3(-5,0,0)
  meshes["hose_coil"] = hose_mesh()
- instance("hose_coil",Vector3(-165,62,2180),Vector3.ONE,Color("354c3e"))
- for y in [49,75]: rod(Vector3(-166,y,2167),Vector3(-166,y,2193),1.2,BRASS,true)
- cyl(Vector3(-164,77,2180),3.0,5.0,BRASS,true)
- rod(Vector3(-164,75,2180),Vector3(-158,75,2180),1.8,BRASS,true)
- box(Vector3(-162,68,2180),Vector3(1,1,30),BRASS,true)
+ instance("hose_coil",hook,Vector3.ONE,Color("354c3e"))
+ for height in [-10,10]:
+  rod(hook+Vector3(-1,height,-13),hook+Vector3(-1,height,13),1.2,BRASS,true)
+  for distance_along in [-11,11]:
+   rod(hook+Vector3(-1,height,distance_along),fixture+Vector3(1,height,distance_along),1.2,BRASS,true)
+ cyl(hook+Vector3(1,15,0),3.0,5.0,BRASS,true)
+ rod(hook+Vector3(1,13,0),fixture+Vector3(1,13,0),1.8,BRASS,true)
  finish_batches()
 
 func watering_can(p: Vector3) -> void:
@@ -100,6 +117,22 @@ func slatted_crate(p: Vector3) -> void:
   for z in [-13,13]:
    for height in [6,14,22]:
     instance("sphere",p+Vector3(side*16.25,height,z),Vector3(0.45,0.9,0.9),BRASS,true)
+ # The folded paper is tied to the far slat, with its writing facing into
+ # the crate. The left middle gap stays physically open in front of it.
+ var tag: Vector3 = p+Data.CRATE_TAG_OFFSET
+ rounded_box(tag,Vector3(0.26,4.8,5.4),Color("c4b892"),0.12,false,Vector3.ZERO,1)
+ rod(tag+Vector3(0,2.3,-1.2),p+Vector3(-4.5,14.1,16.85),0.13,Color("7a6549"))
+ var writing := Label3D.new()
+ writing.name = "CrateTagWriting"
+ writing.font = preload("res://assets/Interface.ttf")
+ writing.text = "TURN\nTHE TRAYS"
+ writing.font_size = 26
+ writing.pixel_size = 0.019
+ writing.outline_size = 0
+ writing.modulate = Color("51422f")
+ add_child(writing)
+ writing.position = tag+Vector3(-0.15,0.1,0)
+ writing.rotation.y = -PI/2
  # World compiles each visible slat, preserving gaps and the perchable rim.
 
 func hose_mesh() -> ArrayMesh:

@@ -1,7 +1,12 @@
 extends CharacterBody3D
+
+const TrainLayout = preload("res://scripts/train_layout.gd")
 const DOUBLE_TAP_WINDOW := 0.30
 const JUMP_SPEED := 18.0
 const JUMP_GRAVITY := 90.0
+const FLIGHT_EYE_RADIUS := 0.12
+const FLIGHT_EYE_PAD := 0.025
+const BOOM_RELEASE_SPEED := 16.0
 var yaw := 0.0
 var pitch := -0.12
 var distance := 14.0
@@ -11,6 +16,8 @@ var jumping := false
 var space_tap_remaining := 0.0
 var active := false
 var precision := false
+var precision_toggle := false
+var precision_latched := false
 var body_collision: CollisionShape3D
 var restore_pending := false
 var camera: Camera3D
@@ -22,8 +29,20 @@ var clock := 0.0
 var inspection := false
 var focus := Vector3.ZERO
 var inspect_distance := 25.0
+var inspect_max_distance := 120.0
 var inspect_yaw := 0.5
 var inspect_pitch := 0.55
+var inspect_eye_shape := SphereShape3D.new()
+var flight_eye_shape := SphereShape3D.new()
+var flight_eye_query := PhysicsShapeQueryParameters3D.new()
+var flight_boom_anchor := Vector3.ZERO
+var flight_boom_length := 0.0
+var flight_boom_zoom := 0.0
+var flight_boom_actor := Vector3.ZERO
+var flight_boom_valid := false
+var flight_boom_releasing := false
+var inspect_clear_pose := Transform3D.IDENTITY
+var inspect_clear_pose_valid := false
 
 func _ready() -> void:
  collision_layer = 2
@@ -101,6 +120,11 @@ func _ready() -> void:
  camera.far = 8000
  camera.fov = 65
  camera.current = true
+ inspect_eye_shape.radius = 0.15
+ flight_eye_shape.radius = FLIGHT_EYE_RADIUS
+ flight_eye_query.shape = flight_eye_shape
+ flight_eye_query.collision_mask = 1
+ flight_eye_query.margin = 0.002
  position = safe_position
 
 func _input(event: InputEvent) -> void:
@@ -110,6 +134,8 @@ func _input(event: InputEvent) -> void:
  if event is InputEventKey and event.pressed and not event.echo and not inspection:
   if event.physical_keycode == KEY_SPACE or event.keycode == KEY_SPACE:
    press_space()
+  elif precision_toggle and not landed and not jumping and (event.physical_keycode == KEY_SHIFT or event.keycode == KEY_SHIFT):
+   precision_latched = not precision_latched
  if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
   if inspection:
    inspect_yaw -= event.relative.x*sensitivity
@@ -120,7 +146,7 @@ func _input(event: InputEvent) -> void:
  if event is InputEventMouseButton and event.pressed:
   var factor := 0.85 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.18
   if event.button_index in [MOUSE_BUTTON_WHEEL_UP,MOUSE_BUTTON_WHEEL_DOWN]:
-   if inspection: inspect_distance = clamp(inspect_distance*factor,3,120)
+   if inspection: inspect_distance = clamp(inspect_distance*factor,3.0,inspect_max_distance)
    else: distance = clamp(distance*factor,2.5,170)
 
 func _physics_process(delta: float) -> void:
@@ -130,7 +156,7 @@ func _physics_process(delta: float) -> void:
  clock += delta
  if active and not inspection:
   space_tap_remaining = maxf(0.0, space_tap_remaining - delta)
-  precision = Input.is_key_pressed(KEY_SHIFT)
+  precision = not landed and not jumping and (precision_latched if precision_toggle else Input.is_key_pressed(KEY_SHIFT))
   var move := Vector3.ZERO
   if Input.is_physical_key_pressed(KEY_W): move.z -= 1
   if Input.is_physical_key_pressed(KEY_S): move.z += 1
@@ -168,22 +194,119 @@ func _physics_process(delta: float) -> void:
   wing_r.rotation.z = -wing_l.rotation.z
  update_camera(delta)
 
-func update_camera(_delta: float) -> void:
+func set_precision_toggle(enabled: bool) -> void:
+ if precision_toggle == enabled: return
+ precision_toggle = enabled
+ reset_precision()
+
+func reset_precision() -> void:
+ precision_latched = false
+ precision = false
+
+func update_camera(delta: float) -> void:
  if inspection:
+  flight_boom_valid=false
   var offset := Vector3(sin(inspect_yaw)*cos(inspect_pitch),sin(inspect_pitch),cos(inspect_yaw)*cos(inspect_pitch))*inspect_distance
-  camera.position = focus+offset
-  camera.look_at(focus,Vector3.UP)
+  place_inspection_eye(focus+offset)
  elif active:
   var forward := Vector3(-sin(yaw)*cos(pitch),sin(pitch),-cos(yaw)*cos(pitch))
   var target := global_position+Vector3(0,0.4,0)
-  camera.position = clear_camera(target,target-forward*distance+Vector3(0,distance*0.17,0))
+  camera.position = flight_camera_boom(target,target-forward*distance+Vector3(0,distance*0.17,0),delta)
   camera.look_at(target+forward*distance*0.35,Vector3.UP)
+ else:
+  flight_boom_valid=false
+
+func flight_camera_boom(from:Vector3,to:Vector3,delta:float)->Vector3:
+ var allowed:=clear_camera(from,to)
+ var reach:=allowed-flight_boom_anchor
+ var limit:=reach.length()
+ var blocked:=limit<from.distance_to(to)-0.05
+ var reset:=not flight_boom_valid or not is_equal_approx(flight_boom_zoom,distance) or flight_boom_actor.distance_to(global_position)>25.0
+ if reset or not flight_boom_releasing or limit<=flight_boom_length:
+  # Keep all intentional scroll changes and obstruction retraction immediate.
+  flight_boom_length=limit
+ else:
+  flight_boom_length=lerpf(flight_boom_length,limit,1.0-exp(-maxf(delta,0.0)*BOOM_RELEASE_SPEED))
+  if limit-flight_boom_length<0.04:flight_boom_length=limit
+ flight_boom_valid=true
+ flight_boom_releasing=blocked or limit-flight_boom_length>0.035
+ flight_boom_zoom=distance
+ flight_boom_actor=global_position
+ return flight_boom_anchor+reach*(flight_boom_length/limit) if limit>0.0001 else allowed
+
+func aim_inspection_eye(at: Vector3) -> void:
+ var towards := (focus-at).normalized()
+ if towards.is_zero_approx(): return
+ camera.global_position = at
+ camera.look_at(focus,Vector3.FORWARD if absf(towards.dot(Vector3.UP))>0.9999 else Vector3.UP)
+
+func inspection_eye_is_clear() -> bool:
+ var query := PhysicsShapeQueryParameters3D.new()
+ query.shape = inspect_eye_shape
+ # The renderer moves the optical eye when framing the item beside its card.
+ # Testing position alone misses an eye moved into a prop by that lens offset.
+ query.transform.origin = camera.get_camera_transform().origin
+ query.collision_mask = 1
+ return get_world_3d().direct_space_state.intersect_shape(query,1).is_empty()
+
+func place_inspection_eye(preferred: Vector3) -> void:
+ var previous := camera.global_transform
+ aim_inspection_eye(preferred)
+ if inspection_eye_is_clear():
+  inspect_clear_pose = camera.global_transform
+  inspect_clear_pose_valid = true
+  return
+ # A blocked view request must not put the lens within solid furniture. Do
+ # not treat the object along the focus ray as a blocker: it may be the item
+ # under inspection, and free orbit around it is still useful.
+ if inspect_clear_pose_valid:
+  camera.global_transform = inspect_clear_pose
+  if inspection_eye_is_clear(): return
+  inspect_clear_pose_valid = false
+ # A newly inspected object may not have a prior orbit. Try the player's
+ # actual approach before nearby alternatives, never changing the fly pose.
+ for near in [global_position+Vector3(0,0.4,0),focus+(preferred-focus)*0.65,focus+(preferred-focus).rotated(Vector3.UP,0.5),focus+(preferred-focus).rotated(Vector3.UP,-0.5)]:
+  aim_inspection_eye(near)
+  if inspection_eye_is_clear():
+   inspect_clear_pose = camera.global_transform
+   inspect_clear_pose_valid = true
+   return
+ camera.global_transform = previous
 
 func clear_camera(from: Vector3, to: Vector3) -> Vector3:
- var query := PhysicsRayQueryParameters3D.create(from,to,1)
- var hit := get_world_3d().direct_space_state.intersect_ray(query)
- if hit: return hit.position+hit.normal*0.2
- return to
+ # The active camera has a near plane, not a zero-width eye. A thin rail
+ # can clip the view without ever touching the old center ray. In a small
+ # gap the elevated orbit point can also begin inside overhead furniture.
+ var space:=get_world_3d().direct_space_state
+ var anchor:=from
+ flight_eye_query.motion=Vector3.ZERO
+ if not flight_eye_clear(space,anchor):
+  # This point uses the fly body's smaller actual free space. Retain the
+  # requested boom direction and zoom rather than moving the player.
+  anchor=global_position
+  if not flight_eye_clear(space,anchor):
+   flight_boom_anchor=anchor
+   return anchor
+ flight_boom_anchor=anchor
+ var travel:=to-from
+ var total:=travel.length()
+ if total<=FLIGHT_EYE_PAD:return anchor
+ flight_eye_query.motion=travel
+ var swept:=space.cast_motion(flight_eye_query)
+ flight_eye_query.motion=Vector3.ZERO
+ var safe:=clampf(swept[0],0.0,1.0)
+ if safe<1.0: safe=maxf(0.0,safe-FLIGHT_EYE_PAD/total)
+ var proposed:=anchor+travel*safe
+ # An endpoint overlap can still happen at the bevel of a concave prop.
+ # Retract rather than keep a clipped position or move to a stale room.
+ if not flight_eye_clear(space,proposed):
+  proposed=anchor+travel*safe*0.72
+  if not flight_eye_clear(space,proposed):return anchor
+ return proposed
+
+func flight_eye_clear(space:PhysicsDirectSpaceState3D, point:Vector3)->bool:
+ flight_eye_query.transform.origin=point
+ return space.intersect_shape(flight_eye_query,1).is_empty()
 
 func position_is_clear(point: Vector3) -> bool:
  var query := PhysicsShapeQueryParameters3D.new()
@@ -209,7 +332,7 @@ func resolve_restored_position() -> void:
  for distance_from_save in [0.5,1.0,2.0,4.0,8.0,16.0,32.0,64.0]:
   for direction in directions:
    var candidate: Vector3 = preferred+direction*distance_from_save
-   if abs(candidate.x)>=169 or candidate.y<=1 or candidate.y>=285 or candidate.z<=0 or candidate.z>=2480: continue
+   if absf(candidate.x)>=TrainLayout.HALF_WIDTH or candidate.y<=1 or candidate.y>=285 or candidate.z<=0 or candidate.z>=2480: continue
    if position_is_clear(candidate):
     global_position = candidate
     safe_position = candidate
@@ -235,7 +358,16 @@ func take_off() -> void:
  move_and_collide(Vector3.UP*0.6)
  velocity.y = maxf(velocity.y, 12.0)
 
+func settle_after_modal_return() -> void:
+ # With no current direction input, don't resume old airborne velocity
+ # as surprise movement after reading a panel or pausing.
+ if landed or jumping: return
+ for key in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_SPACE, KEY_CTRL]:
+  if Input.is_physical_key_pressed(key): return
+ velocity = Vector3.ZERO
+
 func reset_movement() -> void:
+ flight_boom_valid=false
  landed = false
  jumping = false
  space_tap_remaining = 0.0
@@ -257,9 +389,12 @@ func try_land() -> bool:
   return true
  return false
 
-func inspect_at(point: Vector3, zoom: float = 25.0) -> void:
+func inspect_at(point: Vector3, zoom: float = 25.0, max_zoom: float = 120.0) -> void:
+ flight_boom_valid=false
  inspection = true
  focus = point
  inspect_distance = zoom
+ inspect_max_distance = max_zoom
  inspect_yaw = 0.4
  inspect_pitch = 0.65
+ inspect_clear_pose_valid = false

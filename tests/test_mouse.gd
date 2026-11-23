@@ -26,6 +26,7 @@ func run() -> void:
   return
  var game = load("res://scenes/main.tscn").instantiate()
  root.add_child(game)
+ if game.mode=="loading": await game.investigation_ready
  await process_frame
  game.start_game(true)
  await process_frame

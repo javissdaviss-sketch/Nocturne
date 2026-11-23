@@ -22,7 +22,16 @@ void vertex() {
  physical_normal = normalize(NORMAL/max(physical_scale,vec3(0.0001)));
  world_position = (MODEL_MATRIX*vec4(VERTEX,1.0)).xyz;
 }
-vec3 photograph(vec2 coordinates) {
+// These specific atlas families pin to the top of the existing figure
+// range in Compatibility with sRGB samples. Other families keep their
+// original rolloff, as do all default Forward+ and Mobile textures.
+bool compressed_encoded_figure() {
+ return surface_kind == 0 || surface_kind == 1 || surface_kind == 4 || surface_kind == 5;
+}
+vec3 srgb_to_linear_atlas(vec3 encoded) {
+ return mix(encoded/12.92,pow((encoded+vec3(0.055))/1.055,vec3(2.4)),step(vec3(0.04045),encoded));
+}
+vec3 photograph(vec2 coordinates, bool decode) {
  // A mirrored repeat keeps the photographed grain continuous. An inset keeps
  // adjacent atlas cells out of the anisotropic filter footprint.
  vec2 mirrored = abs(fract(coordinates*0.5)*2.0-1.0);
@@ -33,6 +42,7 @@ vec3 photograph(vec2 coordinates) {
  // Beyond a cell's useful resolution the mean is safer than adjacent materials.
  float footprint = max(length(dx),length(dy));
  vec3 sample_color = textureGrad(material_atlas,atlas_uv,dx,dy).rgb;
+ if (decode) { sample_color = srgb_to_linear_atlas(sample_color); }
  return mix(sample_color,vec3(mean_luminance),smoothstep(0.012,0.04,footprint));
 }
 vec3 relief_normal(vec3 position, vec3 normal, float height) {
@@ -47,6 +57,7 @@ vec3 relief_normal(vec3 position, vec3 normal, float height) {
 void fragment() {
  vec3 blend = pow(abs(physical_normal),vec3(6.0));
  blend /= max(dot(blend,vec3(1.0)),0.0001);
+ bool encode_corrected = OUTPUT_IS_SRGB && compressed_encoded_figure();
  vec3 photo;
  if (floor_planks || carpet_border) {
   vec2 coordinates = world_position.xz/tile_cm;
@@ -54,16 +65,17 @@ void fragment() {
    float plank = floor((world_position.x+510.0)/20.0);
    coordinates = vec2(fract((world_position.x+510.0)/20.0),world_position.z/tile_cm.y+plank*0.37);
   }
-  photo = photograph(coordinates);
+  photo = photograph(coordinates,encode_corrected);
  } else {
-  photo = photograph(physical_position.zy/tile_cm)*blend.x
-   +photograph(physical_position.xz/tile_cm)*blend.y
-   +photograph(physical_position.xy/tile_cm)*blend.z;
+  photo = photograph(physical_position.zy/tile_cm,encode_corrected)*blend.x
+   +photograph(physical_position.xz/tile_cm,encode_corrected)*blend.y
+   +photograph(physical_position.xy/tile_cm,encode_corrected)*blend.z;
  }
  float luminance = dot(photo,vec3(0.30,0.59,0.11));
  float figure = clamp(luminance/max(mean_luminance,0.001),0.28,2.6);
  float contrast = (surface_kind == 7 || surface_kind == 8) ? 0.87 : (surface_kind == 4 ? 0.28 : 0.62);
- ALBEDO = tint.rgb*mix(1.0,figure,contrast);
+ float color_figure = encode_corrected ? sqrt(figure) : figure;
+ ALBEDO = tint.rgb*mix(1.0,color_figure,contrast);
  // Keep the rug/damask's actual colored threads instead of tinting to grayscale.
  if (surface_kind == 7 || surface_kind == 8) {
   ALBEDO = mix(ALBEDO,photo*0.85,0.62);
@@ -82,10 +94,15 @@ void fragment() {
   ALBEDO = mix(ALBEDO,vec3(0.30,0.20,0.085),braid*0.7);
  }
  METALLIC = metalness;
- ROUGHNESS = clamp(base_roughness+(1.0-figure)*0.055,0.16,0.98);
- CLEARCOAT = varnish;
- CLEARCOAT_ROUGHNESS = 0.32;
- NORMAL = relief_normal(VERTEX,NORMAL,(figure-1.0)*relief_cm);
+ // The original clipped map had no visible derivatives. Return real wood
+ // texture without turning its grazing highlight into corrugated metal.
+ bool fitted_wood = encode_corrected && (surface_kind == 0 || surface_kind == 1);
+ float satin_roughness = fitted_wood ? max(base_roughness,0.48) : base_roughness;
+ ROUGHNESS = clamp(satin_roughness+(1.0-figure)*0.055,0.16,0.98);
+ CLEARCOAT = fitted_wood ? min(varnish,0.19) : varnish;
+ CLEARCOAT_ROUGHNESS = fitted_wood ? 0.45 : 0.32;
+ float relief_scale = fitted_wood ? 0.35 : 1.0;
+ NORMAL = relief_normal(VERTEX,NORMAL,(figure-1.0)*relief_cm*relief_scale);
  if (surface_kind == 4 || surface_kind == 6 || surface_kind == 8) {
   RIM = 0.13;
   RIM_TINT = 0.35;

@@ -1,0 +1,57 @@
+extends SceneTree
+const Local = preload("res://scripts/night_local.gd")
+var failures: Array[String] = []
+func _initialize() -> void: call_deferred("run")
+func check(ok: bool, message: String) -> void:
+ if not ok: failures.append(message)
+
+func run() -> void:
+ var quiet := Local.new()
+ root.add_child(quiet)
+ quiet.build()
+ var budget: Dictionary = quiet.get_meta("night_local_budget")
+ var actual := 0
+ var surface_bounds := AABB()
+ for child in quiet.get_children():
+  if child is MeshInstance3D:
+   actual += child.mesh.surface_get_array_len(0)/3
+   surface_bounds = surface_bounds.merge(child.get_aabb())
+   check(child.cast_shadow==GeometryInstance3D.SHADOW_CASTING_SETTING_OFF,"No moving part casts a shadow")
+ check(actual==budget.triangles and actual<1500 and budget.mesh_surfaces<=3,"Small measured triangle and surface counts")
+ check(quiet.find_children("*","CollisionObject3D",true,false).is_empty(),"Neighbor never adds gameplay collision")
+ check(quiet.find_children("*","Light3D",true,false).is_empty(),"The lamp is painted into its pane, not added to the scene")
+ check(not quiet.visible and not quiet.in_motion,"Starts hidden")
+ var viewer := Vector3(-448,119,1127)
+ var facing := Vector3(-0.75,0.12,0.1)
+ quiet.observe(viewer,Vector3.RIGHT,true)
+ quiet.observe(Vector3(-450,119,2160),facing,true)
+ quiet.observe(viewer,facing,false)
+ check(not quiet.played,"No reset/case trigger, no wayward room or menu")
+ quiet.set_ambient_enabled(false)
+ quiet.observe(viewer,facing,true)
+ check(not quiet.played and not quiet.visible,"Off prevents appearance")
+ quiet.set_ambient_enabled(true)
+ quiet.observe(viewer,facing,true)
+ check(quiet.played and quiet.visible and quiet.in_motion,"Physical left salon view begins optional pass")
+ check(is_equal_approx(quiet.position.x,Local.TRACK_X) and is_equal_approx(quiet.position.z,Local.START_Z),"Entire first car starts out of this view")
+ quiet.advance(Local.PASS_SECONDS*0.33)
+ check(quiet.in_motion and quiet.visible and absf(quiet.position.z+40-Local.SALON_Z)<90,"Occupied window passes near view at expected phase")
+ quiet.set_ambient_enabled(false)
+ check(not quiet.in_motion and not quiet.visible and is_equal_approx(quiet.position.z,Local.END_Z),"Off hides and finishes cleanly mid-pass")
+ quiet.set_ambient_enabled(true)
+ quiet.observe(viewer,facing,true)
+ check(not quiet.visible and not quiet.in_motion,"No repeat or resurrection in the same world")
+ var clean := Local.new()
+ root.add_child(clean)
+ clean.build()
+ clean.observe(viewer,facing,true)
+ clean.advance(Local.PASS_SECONDS*0.80)
+ check(clean.visible and clean.in_motion,"A calm crossing remains visible until both cars clear")
+ clean.advance(Local.PASS_SECONDS*0.21)
+ check(not clean.visible and not clean.in_motion and clean.played,"Normal crossing clears both cars and ends once")
+ check(Local.TRACK_X+surface_bounds.position.x>-972 and Local.TRACK_X+surface_bounds.end.x<-510,"Neighbor lies on neither skyline nor player train")
+ print("NIGHT_LOCAL_BUDGET ",JSON.stringify(budget)," mesh_bounds=",surface_bounds," issues=",failures)
+ quiet.queue_free()
+ clean.queue_free()
+ await process_frame
+ quit(0 if failures.is_empty() else 1)

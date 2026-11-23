@@ -67,10 +67,13 @@ static func bevelled_timber(size: Vector3, radius: float) -> ArrayMesh:
  if not cache.has(key): cache[key] = preload("res://scripts/upholstery_geometry.gd").build(size,radius,false,radius)
  return cache[key]
 
-static func table(w: Node3D, parent: Node3D, width: float, depth: float) -> void:
+static func table(w: Node3D, parent: Node3D, width: float, depth: float, use: String = "") -> void:
  var top: MeshInstance3D = w.mesh_obj(parent,tabletop(width,depth),Vector3.ZERO,Color.WHITE)
  top.name = "MouldedWalnutTop"
  top.material_override = w.table_material()
+ if use in ["engineering","crew","writing","coast"]:
+  preload("res://scripts/berth_workplaces.gd").dress(w,parent,width,depth,top,use)
+  return
  for inset in [4.2,5.0]:
   var inlay: MeshInstance3D = w.mesh_obj(parent,inlay_ring(width,depth,inset,0.30),Vector3(0,77.43,0),w.GOLD,false,0.7)
   inlay.name = "FlushBrassInlay"

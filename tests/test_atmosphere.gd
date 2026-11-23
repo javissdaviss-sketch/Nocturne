@@ -24,6 +24,10 @@ func check_enabled(game: Node, enabled: bool) -> void:
   check(emitter.emitting == enabled and emitter.is_visible_in_tree() == enabled,"Particle emission and rendering follow atmosphere setting")
  for halo in game.world.scenery.halos:
   check(halo.is_visible_in_tree() == enabled,"Neon halos follow atmosphere setting")
+ check(game.world.scenery.sign_sources.size()==6,"One exterior district repeat supplies six authored signs")
+ check(game.world.scenery.spill_lights.size()==2,"Only the two salon window lights change")
+ for spill in game.world.scenery.spill_lights:
+  check(spill.is_visible_in_tree()==enabled and not spill.shadow_enabled,"Salon neon follows atmosphere with no shadows")
 
 func run() -> void:
  # An existing player's settings file has no atmosphere key yet.
@@ -32,9 +36,11 @@ func run() -> void:
  old_settings.save("user://settings.cfg")
  var game = load("res://scenes/main.tscn").instantiate()
  root.add_child(game)
+ if game.mode=="loading": await game.investigation_ready
  await process_frame
  check(bool(game.options.atmosphere),"Existing settings default to enabled atmosphere")
  check(not bool(game.options.shadows),"Existing graphics preferences are preserved")
+ check(not game.options.precision_toggle and not game.fly.precision_toggle,"Older settings default to Hold Shift")
  var room_keys := 0
  for light in game.world.find_children("*","Light3D",true,false):
   if light.get_meta("room_key",false):
@@ -59,6 +65,12 @@ func run() -> void:
  var toggle := find_text(game,"Rain & atmosphere") as CheckBox
  check(toggle != null,"Atmosphere toggle is reachable in settings")
  if toggle != null: toggle.button_pressed = false
+ var precision := find_text(game,"Hold Shift") as OptionButton
+ check(precision != null,"Precision control is reachable from existing settings")
+ if precision != null:
+  precision.select(1)
+  precision.item_selected.emit(1)
+  check(game.options.precision_toggle and game.fly.precision_toggle,"Toggle preference is applied to the player immediately")
  await process_frame
  check_enabled(game,false)
  var save := find_text(game,"Save & return")
@@ -68,8 +80,10 @@ func run() -> void:
  await process_frame
  game = load("res://scenes/main.tscn").instantiate()
  root.add_child(game)
+ if game.mode=="loading": await game.investigation_ready
  await process_frame
  check(not bool(game.options.atmosphere),"Disabled atmosphere survives application restart")
+ check(game.options.precision_toggle and game.fly.precision_toggle,"Precision preference survives application restart")
  check_enabled(game,false)
  game.show_settings()
  toggle = find_text(game,"Rain & atmosphere") as CheckBox
